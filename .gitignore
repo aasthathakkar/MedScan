@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+env/
+*.db
+
+# Datasets (too large for git)
+drugsComTrain_raw.csv
+drugsComTest_raw.csv
+*.tsv
+
+# Node / frontend
+node_modules/
+dist/
+build/
+.env
+.env.local
+
+# OS / editor
+.DS_Store
+
+# NOTE: model.pkl + tfidf.pkl are intentionally committed so deploy needs no retrain

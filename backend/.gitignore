@@ -1,0 +1,19 @@
+__pycache__/
+*.pyc
+venv/
+.venv/
+env/
+node_modules/
+.DS_Store
+.env
+
+# Raw Kaggle dataset is too large for git - download it locally instead
+drugsComTrain_raw.csv
+drugsComTest_raw.csv
+*.tsv
+
+# SQLite runtime DB - regenerates on startup (medicines reseed from seed_data.py)
+*.db
+
+# NOTE: model.pkl and tfidf.pkl are intentionally committed so the
+# deployed server can run without retraining. They are small.
