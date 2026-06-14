@@ -1,0 +1,41 @@
+.page { max-width:680px; margin:0 auto; padding:var(--space-2xl) var(--space-lg); }
+.heading { font-family:var(--font-display); font-size:var(--text-2xl); font-weight:700; margin-bottom:var(--space-xs); }
+.subtitle { font-size:var(--text-base); color:var(--color-text-secondary); margin-bottom:var(--space-xl); line-height:1.6; }
+.uploadCard { border:2px dashed #cbd5e1; border-radius:var(--radius-lg); min-height:200px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:border-color var(--transition-fast),background-color var(--transition-fast); position:relative; overflow:hidden; }
+.uploadCard:hover { border-color:var(--color-primary); }
+.uploadCardDragging { border-color:var(--color-primary); background-color:var(--color-primary-light); }
+.uploadContent { display:flex; flex-direction:column; align-items:center; gap:var(--space-sm); padding:var(--space-xl); text-align:center; }
+.uploadEmoji { font-size:48px; line-height:1; }
+.uploadTitle { font-family:var(--font-display); font-size:var(--text-md); font-weight:600; color:var(--color-text); }
+.uploadSub { font-size:var(--text-sm); color:var(--color-text-muted); }
+.hiddenInput { display:none; }
+.previewWrap { position:relative; width:100%; display:flex; justify-content:center; padding:var(--space-md); }
+.previewImage { max-height:240px; width:auto; object-fit:cover; border-radius:12px; display:block; }
+.clearBtn { position:absolute; top:var(--space-md); right:var(--space-md); width:28px; height:28px; border-radius:50%; background:var(--color-surface); box-shadow:var(--shadow-md); display:flex; align-items:center; justify-content:center; cursor:pointer; border:none; font-size:14px; color:var(--color-text-secondary); transition:all var(--transition-fast); }
+.clearBtn:hover { background:var(--color-danger-bg); color:var(--color-danger); }
+.scanBtn { width:100%; margin-top:var(--space-lg); }
+.error { margin-top:var(--space-md); padding:var(--space-md); background:var(--color-danger-bg); border:1px solid #fca5a5; border-radius:var(--radius-md); color:var(--color-danger); font-size:var(--text-sm); }
+.resultCard { margin-top:var(--space-xl); animation:fadeIn 0.4s ease both; }
+.medicineName { font-family:var(--font-display); font-size:22px; font-weight:700; margin-bottom:var(--space-md); }
+.medicineNameMuted { color:var(--color-text-muted); }
+.expiryRow { display:flex; align-items:center; gap:var(--space-md); flex-wrap:wrap; margin-bottom:var(--space-sm); }
+.expiryLabel { font-size:var(--text-sm); color:var(--color-text-muted); font-weight:500; text-transform:uppercase; letter-spacing:0.4px; }
+.expiryValue { font-family:var(--font-display); font-size:var(--text-md); font-weight:600; }
+.expiryValueMuted { color:var(--color-text-muted); font-style:italic; }
+.daysRemaining { font-size:var(--text-sm); font-weight:500; margin-bottom:var(--space-lg); }
+.daysGreen { color:var(--color-success); }
+.daysRed { color:var(--color-danger); }
+.sectionTitle { font-family:var(--font-display); font-size:var(--text-sm); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--color-text-secondary); margin-bottom:var(--space-sm); margin-top:var(--space-lg); }
+.pillsWrap { display:flex; flex-wrap:wrap; gap:var(--space-sm); }
+.pill { display:inline-flex; align-items:center; padding:4px 14px; background:var(--color-primary-light); color:var(--color-primary); border-radius:var(--radius-full); font-size:var(--text-sm); font-weight:500; }
+.warningsList { display:flex; flex-direction:column; gap:var(--space-sm); }
+.warningItem { font-size:var(--text-sm); color:var(--color-warning); line-height:1.5; }
+.ocrDetails { margin-top:var(--space-lg); border:1px solid var(--color-border); border-radius:var(--radius-md); overflow:hidden; }
+.ocrSummary { padding:var(--space-sm) var(--space-md); font-size:var(--text-sm); font-weight:500; color:var(--color-text-secondary); cursor:pointer; user-select:none; list-style:none; }
+.ocrSummary::-webkit-details-marker { display:none; }
+.ocrSummary::before { content:'▸ '; }
+.ocrDetails[open] > .ocrSummary::before { content:'▾ '; }
+.ocrText { font-family:monospace; font-size:var(--text-xs); line-height:1.7; background:#f1f5f9; padding:var(--space-md); white-space:pre-wrap; color:var(--color-text-secondary); max-height:240px; overflow-y:auto; }
+.divider { border:none; border-top:1px solid var(--color-border-light); margin:var(--space-lg) 0; }
+@media (max-width:768px) { .page{padding:var(--space-lg) var(--space-md)} .medicineName{font-size:var(--text-lg)} }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
