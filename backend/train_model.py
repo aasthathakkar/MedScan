@@ -96,8 +96,8 @@ def clean(df):
     return df
 
 
-def main():
-    path = sys.argv[1] if len(sys.argv) > 1 else None
+def train_and_save(path=None):
+    """Train the matcher and write model.pkl + tfidf.pkl. Returns (clf, vectorizer)."""
     df, is_seed = load_dataset(path)
     df = clean(df)
 
@@ -128,6 +128,12 @@ def main():
     with open("model.pkl", "wb") as f:
         pickle.dump(clf, f)
     print("Saved model.pkl and tfidf.pkl")
+    return clf, vectorizer
+
+
+def main():
+    path = sys.argv[1] if len(sys.argv) > 1 else None
+    clf, vectorizer = train_and_save(path)
 
     # Smoke test
     classes = clf.classes_

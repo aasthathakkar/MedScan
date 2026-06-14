@@ -18,7 +18,6 @@ Run:
 """
 
 import os
-import shutil
 import tempfile
 from typing import List, Optional
 
@@ -32,9 +31,12 @@ from symptom_model import SymptomMatcher
 
 app = FastAPI(title="Medicine Advisor API", version="1.1.0")
 
+# Set CORS_ORIGINS="https://yourapp.com,https://www.yourapp.com" in production.
+CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # dev convenience; lock this down in production
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -49,7 +51,14 @@ DISCLAIMER = (
 # Create tables + seed the medicines knowledge base on startup.
 db.init_db()
 
-# Load the trained matcher once. If missing, /symptoms returns a clear 503.
+# Self-heal a fresh deployment: if the model pickles are missing, train them now
+# (uses the Kaggle CSV if present in this folder, otherwise the seed data).
+if not (os.path.exists("model.pkl") and os.path.exists("tfidf.pkl")):
+    print("model.pkl/tfidf.pkl not found -> training the model now...")
+    import train_model
+    train_model.train_and_save()
+
+# Load the trained matcher once. If still missing, /symptoms returns a clear 503.
 try:
     matcher = SymptomMatcher()
     matcher_error = None
@@ -113,14 +122,33 @@ def symptoms(req: SymptomRequest):
     return {"query": req.text, "matches": enriched, "disclaimer": DISCLAIMER}
 
 
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB cap
+
+
 @app.post("/scan")
 async def scan(file: UploadFile = File(...)):
+    # Validate: must be an image, and not absurdly large.
+    if file.content_type and not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400,
+                            detail="Please upload an image file (PNG or JPG).")
+
     import ocr_engine  # lazy import: pulls in EasyOCR/torch only when needed
 
     suffix = os.path.splitext(file.filename or "")[1] or ".png"
+    size = 0
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        shutil.copyfileobj(file.file, tmp)
         tmp_path = tmp.name
+        while True:
+            chunk = await file.read(1024 * 1024)   # stream in 1 MB chunks
+            if not chunk:
+                break
+            size += len(chunk)
+            if size > MAX_UPLOAD_BYTES:
+                tmp.close()
+                os.unlink(tmp_path)
+                raise HTTPException(status_code=413,
+                                    detail="Image too large (max 10 MB).")
+            tmp.write(chunk)
     try:
         result = ocr_engine.scan_image(tmp_path)
     finally:

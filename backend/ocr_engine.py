@@ -13,7 +13,7 @@ will be slow. After that it is cached.
 
 import re
 import calendar
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 import safety
 
@@ -70,10 +70,19 @@ def _parse_expiry(text):
     return None
 
 
+# This app targets users in India, so pin "today" to IST. Otherwise a server
+# running in UTC could flag an end-of-month medicine a day early or late.
+_IST = timezone(timedelta(hours=5, minutes=30))
+
+
+def _today():
+    return datetime.now(_IST).date()
+
+
 def _expiry_status(month, year):
     last_day = calendar.monthrange(year, month)[1]
     expiry_end = date(year, month, last_day)
-    days = (expiry_end - date.today()).days
+    days = (expiry_end - _today()).days
     if days < 0:
         status = "expired"
     elif days <= 90:
