@@ -1,0 +1,9 @@
+/* FIX: moved from inline styles in App.jsx */
+.main {
+  margin-left: var(--sidebar-width);
+  flex: 1;
+  min-height: 100vh;
+  padding: var(--space-xl);
+  background: var(--color-bg);
+  overflow-x: hidden;
+}
