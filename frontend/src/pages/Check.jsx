@@ -7,14 +7,13 @@ import s from './Check.module.css';
 export default function Check() {
   const { state } = useLocation();
 
-  // FIX: reads medicine name passed from Symptoms or Medicines pages via navigate state
-  const [medicine, setMedicine]     = useState(state?.medicine || '');
-  const [age, setAge]               = useState('');
-  const [others, setOthers]         = useState([]);
-  const [otherInput, setOtherInput] = useState('');
-  const [result, setResult]         = useState(null);
-  const [loading, setLoading]       = useState(false);
-  const [error, setError]           = useState('');
+  const [medicine,    setMedicine]    = useState(state?.medicine || '');
+  const [age,         setAge]         = useState('');
+  const [others,      setOthers]      = useState([]);
+  const [otherInput,  setOtherInput]  = useState('');
+  const [result,      setResult]      = useState(null);
+  const [loading,     setLoading]     = useState(false);
+  const [error,       setError]       = useState('');
 
   const addOther = () => {
     const v = otherInput.trim();
@@ -30,11 +29,8 @@ export default function Check() {
     setError('');
     setResult(null);
     try {
-      const data = await api.post('/check', {
-        medicine: medicine.trim(),
-        age: parseInt(age, 10) || null,
-        other_medicines: others,
-      });
+      // api.check() signature matches the backend directly — no normalization needed
+      const data = await api.check(medicine.trim(), parseInt(age, 10) || null, others);
       setResult(data);
     } catch (err) {
       setError(err.message || 'Safety check failed.');

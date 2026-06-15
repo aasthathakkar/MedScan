@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Card, Badge, Btn, Spinner } from '../components/UI';
 import api from '../api/client';
 import s from './Cabinet.module.css';
@@ -41,19 +42,24 @@ function TrashIcon() {
 }
 
 export default function Cabinet() {
+  // If we arrived via a "+ Add to cabinet" button, the medicine name rides along
+  // in router state — open the form and pre-fill the name so the user just adds details.
+  const prefill = useLocation().state?.medicine || '';
+
   const [items,      setItems]      = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState('');
-  const [showForm,   setShowForm]   = useState(false);
-  const [newName,    setNewName]    = useState('');
+  const [showForm,   setShowForm]   = useState(!!prefill);
+  const [newName,    setNewName]    = useState(prefill);
   const [newExpiry,  setNewExpiry]  = useState('');
   const [newNotes,   setNewNotes]   = useState('');
   const [addLoading, setAddLoading] = useState(false);
 
-  // FIX: expanded compressed promise chain
   useEffect(() => {
-    api.get('/cabinet')
-      .then(d => setItems(Array.isArray(d) ? d : []))
+    // api.getCabinet() normalizes { items: [...] } and medicine_name/created_at
+    // into a direct array with { name, added_at }
+    api.getCabinet()
+      .then(d => setItems(d))
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
@@ -63,7 +69,8 @@ export default function Cabinet() {
     if (!newName.trim()) return;
     setAddLoading(true);
     try {
-      const created = await api.post('/cabinet', {
+      // api.addToCabinet() translates { name } -> { medicine_name } for the real backend
+      const created = await api.addToCabinet({
         name:   newName.trim(),
         expiry: newExpiry.trim(),
         notes:  newNotes.trim(),
@@ -82,7 +89,7 @@ export default function Cabinet() {
 
   async function handleDelete(id) {
     try {
-      await api.delete(`/cabinet/${id}`);
+      await api.deleteFromCabinet(id);
       setItems(prev => prev.filter(i => i.id !== id));
     } catch (err) {
       setError(err.message);

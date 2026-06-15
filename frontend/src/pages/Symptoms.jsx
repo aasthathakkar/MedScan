@@ -9,10 +9,10 @@ const QUICK_SYMPTOMS = ['Fever', 'Headache', 'Cough', 'Stomach pain', 'Acidity',
 
 export default function Symptoms() {
   const navigate = useNavigate();
-  const [query, setQuery] = useState('');
+  const [query,   setQuery]   = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error,   setError]   = useState('');
   const [animate, setAnimate] = useState(false);
   const textareaRef = useRef(null);
 
@@ -50,8 +50,15 @@ export default function Symptoms() {
     setResults([]);
     setAnimate(false);
     try {
-      const data = await api.post('/symptoms', { text: query.trim() });
-      setResults(data.results || data || []);
+      // api.getSymptoms normalizes backend {matches:[{medicine,...}]}
+      // into {results:[{name,...}]} so this always works
+      const data = await api.getSymptoms(query.trim());
+      // The model always returns its top-3, so for vague input the 2nd/3rd can be
+      // near-zero "filler". Drop anything under 8%, but keep at least the top match
+      // so the user never lands on an empty results panel.
+      const all = data.results || [];
+      const filtered = all.filter(m => (m.confidence ?? 0) >= 0.08);
+      setResults(filtered.length ? filtered : all.slice(0, 1));
     } catch (err) {
       setError(err.message || 'Something went wrong. Please try again.');
     } finally {
@@ -155,13 +162,8 @@ export default function Symptoms() {
                       ))}
                     </div>
                   )}
-                  {/* FIX: wired up both buttons that previously had no onClick */}
                   <div className={s.cardFooter}>
-                    <Btn
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => navigate('/cabinet')}
-                    >
+                    <Btn variant="ghost" size="sm" onClick={() => navigate('/cabinet', { state: { medicine: med.name } })}>
                       Add to cabinet
                     </Btn>
                     <Btn

@@ -65,7 +65,9 @@ export default function Scan() {
     try {
       const form = new FormData();
       form.append('file', file);
-      setResult(await api.post('/scan', form));
+      // api.scan() normalizes backend {medicine_name, expiry_status, raw_text}
+      // into {name, status, ocr_text} so the JSX below always works
+      setResult(await api.scan(form));
     } catch (err) {
       setError(err.message || 'Scan failed. Please try again.');
     } finally {
