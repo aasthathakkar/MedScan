@@ -30,19 +30,19 @@ export default function History() {
   const [error,     setError]     = useState('');
   const [activeTab, setActiveTab] = useState('symptoms');
 
-  // FIX: expanded compressed promise chain
   useEffect(() => {
-    api.get('/history')
+    // api.getHistory() normalizes created_at -> timestamp and expiry_status -> status
+    api.getHistory()
       .then(d => setHistory({
-        symptom_checks: Array.isArray(d?.symptom_checks) ? d.symptom_checks : [],
-        scans:          Array.isArray(d?.scans)           ? d.scans           : [],
+        symptom_checks: d.symptom_checks || [],
+        scans:          d.scans          || [],
       }))
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
 
-  const checks = history.symptom_checks;
-  const scans  = history.scans;
+  const checks       = history.symptom_checks;
+  const scans        = history.scans;
   const totalEntries = checks.length + scans.length;
 
   if (loading) {
@@ -62,7 +62,6 @@ export default function History() {
     <div className={s.page}>
       <div className={s.header}>
         <h1 className={s.title}>History</h1>
-        {/* FIX: was hardcoded "Last 20 entries" but only had 5 — now dynamic */}
         <p className={s.subtitle}>Last {totalEntries} {totalEntries === 1 ? 'entry' : 'entries'}</p>
       </div>
 

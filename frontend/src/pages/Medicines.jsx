@@ -20,10 +20,10 @@ export default function Medicines() {
   const [selected,  setSelected]  = useState(null);
   const [loading,   setLoading]   = useState(true);
 
-  // FIX: expanded compressed promise chain
   useEffect(() => {
-    api.get('/medicines')
-      .then(d => setMedicines(Array.isArray(d) ? d : []))
+    // api.getMedicines() unwraps backend { count, medicines: [...] } into a plain array
+    api.getMedicines()
+      .then(d => setMedicines(d))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -60,7 +60,7 @@ export default function Medicines() {
           <div className={s.list}>
             {filtered.map((m, i) => (
               <button
-                key={m.id ?? i}
+                key={m.id ?? m.name ?? i}
                 className={`${s.listItem} ${selected?.name === m.name ? s.listItemActive : ''}`}
                 onClick={() => setSelected(m)}
               >
@@ -138,7 +138,7 @@ export default function Medicines() {
                 >
                   Check safety →
                 </Btn>
-                <Btn variant="outline" onClick={() => navigate('/cabinet')}>
+                <Btn variant="outline" onClick={() => navigate('/cabinet', { state: { medicine: selected.name } })}>
                   + Add to cabinet
                 </Btn>
               </div>
