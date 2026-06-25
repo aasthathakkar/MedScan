@@ -9,9 +9,6 @@ Routes:
   GET    /medicines         list the whole medicine knowledge base
   GET    /medicines/{name}  one medicine's full info
   GET    /history           recent symptom checks + scans
-  POST   /cabinet           save a medicine to "my cabinet"
-  GET    /cabinet           list saved medicines
-  DELETE /cabinet/{id}      remove a saved medicine
 
 Run:
   uvicorn main:app --reload --port 8000
@@ -79,12 +76,6 @@ class CheckRequest(BaseModel):
     age: Optional[int] = None
     symptoms: Optional[str] = None
     other_medicines: Optional[List[str]] = []
-
-
-class CabinetItem(BaseModel):
-    medicine_name: str
-    expiry: Optional[str] = None
-    notes: Optional[str] = None
 
 
 # --------------------------------------------------------------------------- #
@@ -199,23 +190,3 @@ def get_medicine(name: str):
 @app.get("/history")
 def history(limit: int = 20):
     return db.get_history(limit)
-
-
-# --------------------------------------------------------------------------- #
-# Cabinet ("my medicines")
-# --------------------------------------------------------------------------- #
-@app.post("/cabinet")
-def cabinet_add(item: CabinetItem):
-    return db.add_to_cabinet(item.medicine_name, item.expiry, item.notes)
-
-
-@app.get("/cabinet")
-def cabinet_list():
-    return {"items": db.get_cabinet()}
-
-
-@app.delete("/cabinet/{item_id}")
-def cabinet_delete(item_id: int):
-    if not db.remove_from_cabinet(item_id):
-        raise HTTPException(status_code=404, detail="Item not found")
-    return {"deleted": item_id}

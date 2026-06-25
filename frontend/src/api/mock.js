@@ -107,30 +107,6 @@ export const MEDICINES = [
   },
 ];
 
-export const CABINET_ITEMS = [
-  {
-    id: 'c1',
-    name: 'Paracetamol 500mg',
-    expiry: '08/2027',
-    notes: 'Keep in cool dry place',
-    added_at: '2026-01-01T10:00:00Z',
-  },
-  {
-    id: 'c2',
-    name: 'Cetirizine 10mg',
-    expiry: '03/2027',  // FIX: was 03/2026, already expired
-    notes: 'Bedside drawer',
-    added_at: '2025-12-15T09:00:00Z',
-  },
-  {
-    id: 'c3',
-    name: 'Atorvastatin 10mg',
-    expiry: '12/2027',
-    notes: 'Night dose — do not skip',
-    added_at: '2025-12-12T08:00:00Z',
-  },
-];
-
 export const HISTORY_DATA = {
   symptom_checks: [
     {

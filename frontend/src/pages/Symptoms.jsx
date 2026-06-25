@@ -163,9 +163,6 @@ export default function Symptoms() {
                     </div>
                   )}
                   <div className={s.cardFooter}>
-                    <Btn variant="ghost" size="sm" onClick={() => navigate('/cabinet', { state: { medicine: med.name } })}>
-                      Add to cabinet
-                    </Btn>
                     <Btn
                       variant="ghost"
                       size="sm"

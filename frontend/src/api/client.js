@@ -10,7 +10,6 @@
 
 import {
   MEDICINES,
-  CABINET_ITEMS,
   HISTORY_DATA,
   mockSymptomSearch,
   mockScan,
@@ -21,36 +20,12 @@ import {
 // Mock layer (used when VITE_API_URL is not set)
 // ---------------------------------------------------------------------------
 
-let cabinetStore = [...CABINET_ITEMS];
-let cabinetNextId = 100;
 
 function mockRoute(method, endpoint, body) {
   return new Promise(resolve => {
     setTimeout(() => {
       if (method === 'GET' && endpoint === '/medicines') {
         return resolve(MEDICINES);
-      }
-
-      if (method === 'GET' && endpoint === '/cabinet') {
-        return resolve([...cabinetStore]);
-      }
-
-      if (method === 'POST' && endpoint === '/cabinet') {
-        const item = {
-          id: `c${cabinetNextId++}`,
-          name: body.name || 'Unknown',
-          expiry: body.expiry || '',
-          notes: body.notes || '',
-          added_at: new Date().toISOString(),
-        };
-        cabinetStore.unshift(item);
-        return resolve(item);
-      }
-
-      if (method === 'DELETE' && endpoint.startsWith('/cabinet/')) {
-        const id = endpoint.split('/cabinet/')[1];
-        cabinetStore = cabinetStore.filter(i => i.id !== id);
-        return resolve({ ok: true });
       }
 
       if (method === 'GET' && endpoint === '/history') {
@@ -162,35 +137,6 @@ function normalizeMedicines(data) {
   return [];
 }
 
-/**
- * Backend GET /cabinet returns:
- *   { items: [...] }
- *
- * Pages expect a direct array, with each item using "name" and "added_at".
- * Backend stores "medicine_name" and "created_at".
- */
-function normalizeCabinet(data) {
-  const raw = Array.isArray(data) ? data : (data?.items || []);
-  return raw.map(item => ({
-    id:       String(item.id),          // IDs are integers in real DB, strings in mock
-    name:     item.name || item.medicine_name || '',
-    expiry:   item.expiry   || '',
-    notes:    item.notes    || '',
-    added_at: item.added_at || item.created_at || '',
-  }));
-}
-
-/**
- * Backend POST /cabinet expects { medicine_name, expiry, notes }.
- * Pages send { name, expiry, notes }.
- */
-function cabinetPostBody(body) {
-  return {
-    medicine_name: body.name || body.medicine_name || '',
-    expiry:        body.expiry || '',
-    notes:         body.notes  || '',
-  };
-}
 
 /**
  * Backend /history returns:
@@ -252,21 +198,6 @@ const api = {
     return normalizeMedicines(data);
   },
 
-  async getCabinet() {
-    const data = await request('GET', '/cabinet');
-    return normalizeCabinet(data);
-  },
-
-  async addToCabinet(body) {
-    const payload = USE_MOCK ? body : cabinetPostBody(body);
-    const data = await request('POST', '/cabinet', payload);
-    // Normalize the single returned item the same way
-    return normalizeCabinet([data])[0];
-  },
-
-  async deleteFromCabinet(id) {
-    return request('DELETE', `/cabinet/${id}`);
-  },
 
   async getHistory() {
     const data = await request('GET', '/history');
