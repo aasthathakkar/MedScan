@@ -5,7 +5,6 @@ Tables:
   medicines        - the knowledge base, seeded from seed_data.MEDICINES
   symptom_history  - every /symptoms query that runs
   scan_history     - every /scan that runs
-  cabinet          - medicines the user saved ("my medicine cabinet")
 
 Design notes:
   - One SQLite file, no server. `MEDICINE_DB` env var overrides the path.
@@ -50,14 +49,6 @@ CREATE TABLE IF NOT EXISTS scan_history (
     medicine_name TEXT,
     expiry        TEXT,
     expiry_status TEXT,
-    created_at    TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS cabinet (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    medicine_name TEXT NOT NULL,
-    expiry        TEXT,
-    notes         TEXT,
     created_at    TEXT NOT NULL
 );
 """
@@ -202,41 +193,3 @@ def get_history(limit: int = 20) -> Dict[str, Any]:
     finally:
         conn.close()
 
-
-# --------------------------------------------------------------------------- #
-# Cabinet ("my medicines")
-# --------------------------------------------------------------------------- #
-def add_to_cabinet(medicine_name: str, expiry: Optional[str] = None,
-                   notes: Optional[str] = None) -> Dict[str, Any]:
-    conn = _connect()
-    try:
-        cur = conn.execute(
-            "INSERT INTO cabinet (medicine_name, expiry, notes, created_at) "
-            "VALUES (?, ?, ?, ?)",
-            (medicine_name, expiry, notes, _now()),
-        )
-        conn.commit()
-        row = conn.execute("SELECT * FROM cabinet WHERE id = ?",
-                           (cur.lastrowid,)).fetchone()
-        return dict(row)
-    finally:
-        conn.close()
-
-
-def get_cabinet() -> List[Dict[str, Any]]:
-    conn = _connect()
-    try:
-        return [dict(r) for r in conn.execute(
-            "SELECT * FROM cabinet ORDER BY id DESC")]
-    finally:
-        conn.close()
-
-
-def remove_from_cabinet(item_id: int) -> bool:
-    conn = _connect()
-    try:
-        cur = conn.execute("DELETE FROM cabinet WHERE id = ?", (item_id,))
-        conn.commit()
-        return cur.rowcount > 0
-    finally:
-        conn.close()

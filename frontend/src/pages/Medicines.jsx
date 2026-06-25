@@ -138,9 +138,6 @@ export default function Medicines() {
                 >
                   Check safety →
                 </Btn>
-                <Btn variant="outline" onClick={() => navigate('/cabinet', { state: { medicine: selected.name } })}>
-                  + Add to cabinet
-                </Btn>
               </div>
             </Card>
           )}

@@ -7,7 +7,6 @@ const features = [
   { emoji: '💊', title: 'Symptom Checker',  desc: 'Describe what you feel, get medicine suggestions', to: '/symptoms' },
   { emoji: '📷', title: 'Scan Expiry',      desc: 'Point your camera at a strip to check the date',  to: '/scan'     },
   { emoji: '🛡️', title: 'Safety Check',     desc: 'Verify age limits and drug interactions',          to: '/check'    },
-  { emoji: '🗄️', title: 'My Cabinet',       desc: 'Save your medicines and track expiry',             to: '/cabinet'  },
 ];
 
 const steps = ['Describe or scan', 'Get instant analysis', 'Stay informed'];

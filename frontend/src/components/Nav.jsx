@@ -38,15 +38,6 @@ function CheckIcon() {
   );
 }
 
-function CabinetIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="3" width="20" height="18" rx="2"/>
-      <path d="M2 12h20M12 3v18"/>
-    </svg>
-  );
-}
-
 function MedicinesIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -69,7 +60,6 @@ const links = [
   { to: '/symptoms',  label: 'Symptoms',  Icon: SymptomsIcon  },
   { to: '/scan',      label: 'Scan',      Icon: ScanIcon      },
   { to: '/check',     label: 'Check',     Icon: CheckIcon     },
-  { to: '/cabinet',   label: 'Cabinet',   Icon: CabinetIcon   },
   { to: '/medicines', label: 'Medicines', Icon: MedicinesIcon },
   { to: '/history',   label: 'History',   Icon: HistoryIcon   },
 ];
