@@ -43,6 +43,11 @@ FastAPI Backend (Python)
 └─────────────────────────────────────────────┘
 ```
 
+The frontend never sees the backend's raw response shapes: a normalization layer
+in `src/api/client.js` maps the API's `snake_case` fields (`medicine_name`,
+`expiry_status`, `created_at`, …) to the `camelCase` the components expect, so
+either side can change independently.
+
 ---
 
 ## 🧠 ML Model
@@ -50,9 +55,9 @@ FastAPI Backend (Python)
 - **Algorithm:** TF-IDF vectorizer (unigrams + bigrams) into a Logistic Regression classifier
 - **Training data:** UCI ML Drug Review Dataset (Drugs.com) with ~215,000 real patient reviews. Falls back to a built-in seed dataset so the app runs immediately on a fresh clone without needing the Kaggle CSV.
 - **Output:** Top-3 medicine predictions with probability scores per query
-- **Evaluation:** 80/20 train/test split via `evaluate_model.py` reporting top-1 accuracy, top-3 accuracy, and macro-F1
+- **Evaluation:** `evaluate_model.py` trains on an 80/20 split purely for scoring and reports top-1 accuracy, top-3 accuracy, and macro-F1. (The shipped `model.pkl` is trained on 100% of the data by `train_model.py`, so the two are intentionally separate — one is the product, the other is the honest score.)
 
-The model is a closed-set classifier: it predicts from its fixed set of trained medicines and cannot invent new drug names.
+The model is a **closed-set classifier**: it predicts from its fixed set of trained medicines and cannot invent new drug names. Unrecognized input still returns the nearest known medicines, just with low confidence.
 
 ---
 
@@ -75,7 +80,7 @@ SQLite (`medicine_advisor.db`) is auto-created on first server boot and git-igno
 |---|---|
 | Frontend | React 18, Vite, CSS Modules |
 | Routing | React Router v6 |
-| Backend | FastAPI, Python 3.11 |
+| Backend | FastAPI, Python 3.10+ |
 | ML | scikit-learn (TF-IDF + Logistic Regression) |
 | OCR | EasyOCR (PyTorch) |
 | Database | SQLite |
@@ -118,7 +123,11 @@ uvicorn main:app --reload --port 8000
 
 Interactive API docs at **http://localhost:8000/docs**
 
-To use the full model, download `drugsComTrain_raw.csv` from the UCI Drug Review Dataset on Kaggle, place it in `backend/`, and rerun `python train_model.py`.
+To use the full model, download `drugsComTrain_raw.csv` from the UCI Drug Review Dataset on Kaggle, place it in `backend/`, and rerun `python train_model.py`. Then check the scores with:
+
+```bash
+python evaluate_model.py        # top-1, top-3, macro-F1 on an 80/20 split
+```
 
 ### Frontend
 
@@ -133,6 +142,44 @@ App at **http://localhost:5173**
 
 ---
 
+## ☁️ Deployment
+
+The frontend and backend deploy independently and are wired together by one URL
+and one CORS setting.
+
+### Frontend → Vercel
+- **Root directory:** `frontend`
+- **Build command:** `npm run build` &nbsp;•&nbsp; **Output directory:** `dist`
+- **Environment variable:** `VITE_API_URL` = your deployed backend URL
+  (e.g. `https://medscan-api.onrender.com`)
+
+> ⚠️ Vite inlines environment variables at **build time**, so `VITE_API_URL`
+> must be set in Vercel *before* the build runs. If it is missing, the
+> production app will not silently fall back to mock data — requests will just
+> fail visibly (by design), which is the signal that the env var wasn't set.
+
+### Backend → any container / Python host (Render, Railway, Fly.io)
+- **Install:** `pip install -r requirements.txt`
+- **Start command:** `uvicorn main:app --host 0.0.0.0 --port $PORT`
+- **Environment variable:** `CORS_ORIGINS` = your Vercel URL
+  (comma-separated for more than one origin)
+- `model.pkl` and `tfidf.pkl` are committed, so the backend boots **without
+  retraining**. SQLite is seeded automatically on first request.
+
+**Two honest caveats for hosting:**
+- **EasyOCR is heavy** (it pulls in PyTorch and downloads model weights on first
+  use), so the backend image is large and may need more than a free tier's
+  memory. The symptom/safety/cabinet features are lightweight; only `/scan`
+  needs OCR.
+- **SQLite is ephemeral** on most PaaS — it regenerates from seed on each
+  deploy/restart, which is fine for a demo. For persistent cabinet/history data,
+  attach a disk/volume or move to Postgres.
+
+> **Status:** containerizing the backend (a `Dockerfile`) is the remaining step;
+> everything else is deployment-ready.
+
+---
+
 ## 📁 Project structure
 
 ```
@@ -140,8 +187,8 @@ MedScan/
 ├── backend/
 │   ├── main.py             # FastAPI app and all routes
 │   ├── symptom_model.py    # Loads trained matcher, runs predictions
-│   ├── train_model.py      # TF-IDF + LR training script
-│   ├── evaluate_model.py   # 80/20 evaluation (top-1, top-3, F1)
+│   ├── train_model.py      # TF-IDF + LR training script (+ seed dataset)
+│   ├── evaluate_model.py   # 80/20 evaluation (top-1, top-3, macro-F1)
 │   ├── ocr_engine.py       # EasyOCR pipeline and expiry parser
 │   ├── safety.py           # Age limits and interaction checks
 │   ├── db.py               # SQLite data layer (CRUD for all 4 tables)
@@ -173,6 +220,26 @@ MedScan/
 │   └── package.json
 └── README.md
 ```
+
+---
+
+## ⚠️ Limitations & honest notes
+
+- **Not medical advice.** This is an educational prototype. Every medicine output
+  carries a disclaimer, and the safety logic is a teaching aid, not a clinical
+  tool.
+- **Closed-set classifier.** The matcher only knows the medicines it was trained
+  on. Out-of-vocabulary or vague symptoms still return the nearest known options
+  at low confidence — read the percentage, not just the name.
+- **Seed vs. full data.** A fresh clone runs on a small hand-built seed dataset so
+  the app works immediately; meaningful accuracy requires the ~215k-row Kaggle
+  dataset and a rerun of `train_model.py`.
+- **OCR depends on image quality.** Expiry/name extraction works best on clear,
+  well-lit, flat strips. The parser handles common date formats (MM/YYYY,
+  MM-YY, MON YYYY, ISO, and `EXP`-prefixed); unusual layouts may not parse.
+- **Safety knowledge is curated, not exhaustive.** Interaction and age-limit
+  checks cover the medicines in `seed_data.py` and are not a substitute for a
+  pharmacist or a full drug-interaction database.
 
 ---
 
