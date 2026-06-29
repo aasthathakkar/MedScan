@@ -1,56 +1,55 @@
 import { NavLink } from 'react-router-dom';
 import s from './Nav.module.css';
 
-// FIX: extracted SVGs as named components instead of JSX values in a const array
+// Icon set from the new design — each is a small line-icon component.
 function HomeIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
-      <polyline points="9 22 9 12 15 12 15 22"/>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 10.5 12 3l9 7.5" />
+      <path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5" />
+      <path d="M9.5 21v-6h5v6" />
     </svg>
   );
 }
-
 function SymptomsIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="18" height="18" rx="3"/>
-      <path d="M12 8v8M8 12h8"/>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 11a3 3 0 1 0 6 0V5a3 3 0 0 0-6 0z" />
+      <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
     </svg>
   );
 }
-
 function ScanIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>
-      <rect x="7" y="7" width="10" height="10" rx="1"/>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2" />
+      <path d="M3 12h18" />
     </svg>
   );
 }
-
 function CheckIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-      <polyline points="9 12 11 14 15 10"/>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 12.5 11 14.5 15.5 10" />
+      <path d="M12 3 5 6v5c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V6z" />
     </svg>
   );
 }
-
 function MedicinesIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="8" width="13" height="13" rx="3" />
+      <path d="M8 8V6a3 3 0 0 1 6 0v2" />
+      <path d="M9.5 14.5h3" />
     </svg>
   );
 }
-
 function HistoryIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10"/>
-      <polyline points="12 6 12 12 16 14"/>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+      <path d="M3 4v4h4" />
+      <path d="M12 8v4l3 2" />
     </svg>
   );
 }
@@ -68,13 +67,15 @@ export default function Nav() {
   return (
     <aside className={s.sidebar}>
       <div className={s.logo}>
-        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-          <rect width="32" height="32" rx="8" fill="var(--color-primary)"/>
-          <path d="M16 8v16M8 16h16" stroke="#fff" strokeWidth="3" strokeLinecap="round"/>
-        </svg>
+        <div className={s.logoChip}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 21s-7-4.5-9.5-9A5 5 0 0 1 12 6a5 5 0 0 1 9.5 6c-2.5 4.5-9.5 9-9.5 9z" />
+            <path d="M12 8v6M9 11h6" />
+          </svg>
+        </div>
         <div>
-          <span className={s.logoTitle}>MedScan</span>
-          <span className={s.logoSub}>MEDICAL ADVISOR</span>
+          <div className={s.logoTitle}>MedScan</div>
+          <div className={s.logoSub}>Medicine, made friendly</div>
         </div>
       </div>
 
@@ -87,10 +88,15 @@ export default function Nav() {
             className={({ isActive }) => `${s.link} ${isActive ? s.active : ''}`}
           >
             <span className={s.icon}><Icon /></span>
-            {label}
+            <span>{label}</span>
           </NavLink>
         ))}
       </nav>
+
+      <div className={s.helpCard}>
+        <div className={s.helpTitle}>Need a hand?</div>
+        <div className={s.helpText}>Ask a pharmacist near you for personalized advice.</div>
+      </div>
     </aside>
   );
 }

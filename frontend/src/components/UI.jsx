@@ -49,7 +49,7 @@ export function Btn({ children, variant = 'primary', size = 'md', className = ''
   );
 }
 
-export function Spinner({ size = 20, color = 'currentColor' }) {
+export function Spinner({ size = 20, color = '#7C5CFC' }) {
   return (
     <svg className={s.spinner} width={size} height={size} viewBox="0 0 24 24" fill="none">
       <circle
@@ -63,30 +63,18 @@ export function Spinner({ size = 20, color = 'currentColor' }) {
   );
 }
 
-// FIX: removed unused `text` prop — the disclaimer text was always the fallback anyway
 export function Disclaimer() {
   return (
     <div className={s.disclaimer}>
-      <svg
-        className={s.disclaimerIcon}
-        width="20" height="20"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-        <line x1="12" y1="9" x2="12" y2="13"/>
-        <line x1="12" y1="17" x2="12.01" y2="17"/>
-      </svg>
-      <div>
-        <strong className={s.disclaimerTitle}>Disclaimer</strong>
-        <p className={s.disclaimerText}>
-          This is an educational prototype, not medical advice. Always consult a doctor or pharmacist.
-        </p>
-      </div>
+      <span className={s.disclaimerChip}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 9v4M12 17h.01" />
+          <path d="M10.3 3.8 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.8a2 2 0 0 0-3.4 0z" />
+        </svg>
+      </span>
+      <p className={s.disclaimerText}>
+        Educational prototype, not medical advice. Always consult a doctor or pharmacist.
+      </p>
     </div>
   );
 }
