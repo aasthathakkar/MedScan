@@ -241,6 +241,7 @@ MedScan/
   checks cover the medicines in `seed_data.py` and are not a substitute for a
   pharmacist or a full drug-interaction database.
 
+
 ---
 
 *Built to make medicine safety more accessible.*
