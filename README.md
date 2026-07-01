@@ -140,45 +140,6 @@ npm run dev
 
 App at **http://localhost:5173**
 
----
-
-## ☁️ Deployment
-
-The frontend and backend deploy independently and are wired together by one URL
-and one CORS setting.
-
-### Frontend → Vercel
-- **Root directory:** `frontend`
-- **Build command:** `npm run build` &nbsp;•&nbsp; **Output directory:** `dist`
-- **Environment variable:** `VITE_API_URL` = your deployed backend URL
-  (e.g. `https://medscan-api.onrender.com`)
-
-> ⚠️ Vite inlines environment variables at **build time**, so `VITE_API_URL`
-> must be set in Vercel *before* the build runs. If it is missing, the
-> production app will not silently fall back to mock data — requests will just
-> fail visibly (by design), which is the signal that the env var wasn't set.
-
-### Backend → any container / Python host (Render, Railway, Fly.io)
-- **Install:** `pip install -r requirements.txt`
-- **Start command:** `uvicorn main:app --host 0.0.0.0 --port $PORT`
-- **Environment variable:** `CORS_ORIGINS` = your Vercel URL
-  (comma-separated for more than one origin)
-- `model.pkl` and `tfidf.pkl` are committed, so the backend boots **without
-  retraining**. SQLite is seeded automatically on first request.
-
-**Two honest caveats for hosting:**
-- **EasyOCR is heavy** (it pulls in PyTorch and downloads model weights on first
-  use), so the backend image is large and may need more than a free tier's
-  memory. The symptom/safety/cabinet features are lightweight; only `/scan`
-  needs OCR.
-- **SQLite is ephemeral** on most PaaS — it regenerates from seed on each
-  deploy/restart, which is fine for a demo. For persistent cabinet/history data,
-  attach a disk/volume or move to Postgres.
-
-> **Status:** containerizing the backend (a `Dockerfile`) is the remaining step;
-> everything else is deployment-ready.
-
----
 
 ## 📁 Project structure
 
