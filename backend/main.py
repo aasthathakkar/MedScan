@@ -22,7 +22,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-import db
+import backend.supabase_db as supabase_db
 import safety
 from symptom_model import SymptomMatcher
 
@@ -46,7 +46,7 @@ DISCLAIMER = (
 )
 
 # Create tables + seed the medicines knowledge base on startup.
-db.init_db()
+supabase_db.init_db()
 
 # Self-heal a fresh deployment: if the model pickles are missing, train them now
 # (uses the Kaggle CSV if present in this folder, otherwise the seed data).
@@ -87,7 +87,7 @@ def root():
         "status": "ok",
         "service": "Medicine Advisor API",
         "model_loaded": matcher is not None,
-        "medicines_in_db": len(db.all_medicines()),
+        "medicines_in_db": len(supabase_db.all_medicines()),
         "disclaimer": DISCLAIMER,
     }
 
@@ -109,7 +109,7 @@ def symptoms(req: SymptomRequest):
             "warnings": info.get("warnings", []),
         })
 
-    db.log_symptom_check(req.text, matches)   # persist to history
+    supabase_db.log_symptom_check(req.text, matches)   # persist to history
     return {"query": req.text, "matches": enriched, "disclaimer": DISCLAIMER}
 
 
@@ -150,7 +150,7 @@ async def scan(file: UploadFile = File(...)):
     result["warnings"] = info.get("warnings", [])
     result["disclaimer"] = DISCLAIMER
 
-    db.log_scan(result.get("medicine_name"), result.get("expiry"),
+    supabase_db.log_scan(result.get("medicine_name"), result.get("expiry"),
                 result.get("expiry_status"))   # persist to history
     return result
 
@@ -171,13 +171,13 @@ def check(req: CheckRequest):
 # --------------------------------------------------------------------------- #
 @app.get("/medicines")
 def list_medicines():
-    meds = db.all_medicines()
+    meds = supabase_db.all_medicines()
     return {"count": len(meds), "medicines": meds, "disclaimer": DISCLAIMER}
 
 
 @app.get("/medicines/{name}")
 def get_medicine(name: str):
-    med = db.get_medicine(name)
+    med = supabase_db.get_medicine(name)
     if not med:
         raise HTTPException(status_code=404, detail=f"'{name}' not found")
     med["disclaimer"] = DISCLAIMER
@@ -189,4 +189,4 @@ def get_medicine(name: str):
 # --------------------------------------------------------------------------- #
 @app.get("/history")
 def history(limit: int = 20):
-    return db.get_history(limit)
+    return supabase_db.get_history(limit)

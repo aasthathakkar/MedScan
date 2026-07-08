@@ -8,7 +8,7 @@ age limits + interaction checks.
 
 from typing import List, Optional
 
-import db
+import backend.supabase_db as supabase_db
 
 
 def _normalize(name: str) -> str:
@@ -17,7 +17,7 @@ def _normalize(name: str) -> str:
 
 def get_info(name: str) -> dict:
     """Return the medicine record (dict) or {} if unknown."""
-    med = db.get_medicine(name)
+    med = supabase_db.get_medicine(name)
     return med or {}
 
 
@@ -26,7 +26,7 @@ def check(medicine: str,
           other_medicines: Optional[List[str]] = None) -> dict:
     """Combine age limits + interactions + warnings for one medicine."""
     other_medicines = other_medicines or []
-    info = db.get_medicine(medicine)
+    info = supabase_db.get_medicine(medicine)
     recognized = info is not None
     info = info or {}
 
