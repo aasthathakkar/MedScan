@@ -1,5 +1,5 @@
 """
-Medicine Advisor API (SQLite-backed).
+Medicine Advisor API (Supabase-backed).
 
 Routes:
   GET    /                  health check
@@ -8,7 +8,13 @@ Routes:
   POST   /check             medicine+age   -> safety warnings + interactions
   GET    /medicines         list the whole medicine knowledge base
   GET    /medicines/{name}  one medicine's full info
-  GET    /history           recent symptom checks + scans
+  GET    /history           recent symptom checks + scans (private, requires auth)
+
+Auth:
+  Routes that log or return personal data (/symptoms, /scan, /history) require
+  a valid Supabase JWT in the Authorization header:
+    Authorization: Bearer <supabase_access_token>
+  Public routes (/check, /medicines, /) work without auth.
 
 Run:
   uvicorn main:app --reload --port 8000
@@ -18,19 +24,21 @@ import os
 import tempfile
 from typing import List, Optional
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from supabase import create_client
+from dotenv import load_dotenv
 
-import backend.supabase_db as supabase_db
+import supabase_db as db
 import safety
 from symptom_model import SymptomMatcher
 
-app = FastAPI(title="Medicine Advisor API", version="1.1.0")
+load_dotenv()
 
-# Set CORS_ORIGINS="https://yourapp.com,https://www.yourapp.com" in production.
+app = FastAPI(title="Medicine Advisor API", version="2.0.0")
+
 CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*").split(",")
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
@@ -45,17 +53,15 @@ DISCLAIMER = (
     "pharmacist before taking any medication."
 )
 
-# Create tables + seed the medicines knowledge base on startup.
-supabase_db.init_db()
+# Seed medicines on startup
+db.init_db()
 
-# Self-heal a fresh deployment: if the model pickles are missing, train them now
-# (uses the Kaggle CSV if present in this folder, otherwise the seed data).
+# Self-heal: train model if pickles are missing
 if not (os.path.exists("model.pkl") and os.path.exists("tfidf.pkl")):
-    print("model.pkl/tfidf.pkl not found -> training the model now...")
+    print("model.pkl/tfidf.pkl not found -> training now...")
     import train_model
     train_model.train_and_save()
 
-# Load the trained matcher once. If still missing, /symptoms returns a clear 503.
 try:
     matcher = SymptomMatcher()
     matcher_error = None
@@ -64,9 +70,34 @@ except FileNotFoundError as exc:
     matcher_error = str(exc)
 
 
-# --------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------
+# Auth helper — verifies the Supabase JWT and returns the user_id
+# ---------------------------------------------------------------------------
+
+def get_user_id(authorization: Optional[str]) -> str:
+    """
+    Extracts and verifies the Bearer token from the Authorization header.
+    Returns the user's UUID string, or raises 401.
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Not authenticated.")
+    token = authorization.split(" ", 1)[1]
+    try:
+        # Use the anon key here — we're verifying a user token, not bypassing RLS
+        sb = create_client(
+            os.environ["SUPABASE_URL"],
+            os.environ["SUPABASE_SERVICE_KEY"],
+        )
+        user = sb.auth.get_user(token)
+        return user.user.id
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid or expired token.")
+
+
+# ---------------------------------------------------------------------------
 # Schemas
-# --------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------
+
 class SymptomRequest(BaseModel):
     text: str
 
@@ -74,28 +105,31 @@ class SymptomRequest(BaseModel):
 class CheckRequest(BaseModel):
     medicine: str
     age: Optional[int] = None
-    symptoms: Optional[str] = None
     other_medicines: Optional[List[str]] = []
 
 
-# --------------------------------------------------------------------------- #
-# Core routes
-# --------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
+
 @app.get("/")
 def root():
     return {
         "status": "ok",
         "service": "Medicine Advisor API",
         "model_loaded": matcher is not None,
-        "medicines_in_db": len(supabase_db.all_medicines()),
+        "medicines_in_db": len(db.all_medicines()),
         "disclaimer": DISCLAIMER,
     }
 
 
 @app.post("/symptoms")
-def symptoms(req: SymptomRequest):
+def symptoms(req: SymptomRequest,
+             authorization: Optional[str] = Header(default=None)):
     if matcher is None:
         raise HTTPException(status_code=503, detail=matcher_error)
+
+    user_id = get_user_id(authorization)
 
     matches = matcher.predict(req.text, top_k=3)
     enriched = []
@@ -109,28 +143,29 @@ def symptoms(req: SymptomRequest):
             "warnings": info.get("warnings", []),
         })
 
-    supabase_db.log_symptom_check(req.text, matches)   # persist to history
+    db.log_symptom_check(user_id, req.text, matches)
     return {"query": req.text, "matches": enriched, "disclaimer": DISCLAIMER}
 
 
-MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB cap
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 
 
 @app.post("/scan")
-async def scan(file: UploadFile = File(...)):
-    # Validate: must be an image, and not absurdly large.
+async def scan(file: UploadFile = File(...),
+               authorization: Optional[str] = Header(default=None)):
     if file.content_type and not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400,
                             detail="Please upload an image file (PNG or JPG).")
 
-    import ocr_engine  # lazy import: pulls in EasyOCR/torch only when needed
+    user_id = get_user_id(authorization)
 
+    import ocr_engine
     suffix = os.path.splitext(file.filename or "")[1] or ".png"
     size = 0
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         tmp_path = tmp.name
         while True:
-            chunk = await file.read(1024 * 1024)   # stream in 1 MB chunks
+            chunk = await file.read(1024 * 1024)
             if not chunk:
                 break
             size += len(chunk)
@@ -150,13 +185,14 @@ async def scan(file: UploadFile = File(...)):
     result["warnings"] = info.get("warnings", [])
     result["disclaimer"] = DISCLAIMER
 
-    supabase_db.log_scan(result.get("medicine_name"), result.get("expiry"),
-                result.get("expiry_status"))   # persist to history
+    db.log_scan(user_id, result.get("medicine_name"),
+                result.get("expiry"), result.get("expiry_status"))
     return result
 
 
 @app.post("/check")
 def check(req: CheckRequest):
+    # /check is intentionally public — no auth needed, it's purely informational
     result = safety.check(
         req.medicine,
         age=req.age,
@@ -166,27 +202,23 @@ def check(req: CheckRequest):
     return result
 
 
-# --------------------------------------------------------------------------- #
-# Medicines (knowledge base)
-# --------------------------------------------------------------------------- #
 @app.get("/medicines")
 def list_medicines():
-    meds = supabase_db.all_medicines()
+    meds = db.all_medicines()
     return {"count": len(meds), "medicines": meds, "disclaimer": DISCLAIMER}
 
 
 @app.get("/medicines/{name}")
 def get_medicine(name: str):
-    med = supabase_db.get_medicine(name)
+    med = db.get_medicine(name)
     if not med:
         raise HTTPException(status_code=404, detail=f"'{name}' not found")
     med["disclaimer"] = DISCLAIMER
     return med
 
 
-# --------------------------------------------------------------------------- #
-# History
-# --------------------------------------------------------------------------- #
 @app.get("/history")
-def history(limit: int = 20):
-    return supabase_db.get_history(limit)
+def history(authorization: Optional[str] = Header(default=None),
+            limit: int = 20):
+    user_id = get_user_id(authorization)
+    return db.get_history(user_id, limit)
