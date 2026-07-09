@@ -11,8 +11,8 @@ from dotenv import load_dotenv
 from seed_data import MEDICINES
 
 load_dotenv()
-SUPABASE_URL = os.environ("https://qvtkcxcuafhwvdaaqrzw.supabase.co")
-SUPABASE_SERVICE_KEY = os.environ("your_service_role_key_here")
+SUPABASE_URL = os.environ["SUPABASE_URL"]
+SUPABASE_SERVICE_KEY = os.environ["SUPABASE_SERVICE_KEY"]
 
 def _client() -> Client:
     return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
@@ -103,16 +103,6 @@ def log_scan(user_id: str, medicine_name: Optional[str],
         "expiry": expiry,
         "expiry_status": expiry_status,
     }).execute()
-def log_scan(user_id: str, medicine_name: Optional[str],
-             expiry: Optional[str], expiry_status: Optional[str]) -> None:
-    sb = _client()
-    sb.table("scan_history").insert({
-        "user_id": user_id,
-        "medicine_name": medicine_name,
-        "expiry": expiry,
-        "expiry_status": expiry_status,
-    }).execute()
-
 
 def get_history(user_id: str, limit: int = 20) -> Dict[str, Any]:
     sb = _client()
