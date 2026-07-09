@@ -7,3 +7,5 @@ pandas>=2.0
 numpy>=1.24
 pillow>=10.0
 easyocr>=1.7
+supabase>=2.3
+python-dotenv>=1.0
