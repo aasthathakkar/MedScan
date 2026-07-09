@@ -1,14 +1,8 @@
 """
-Rule-based safety checks, now backed by the SQLite `medicines` table.
-
-The medicine data itself lives in seed_data.py (seeded into the DB by db.py).
-This module is pure logic: it reads a medicine via db.get_medicine and applies
-age limits + interaction checks.
+Rule-based safety checks, backed by Supabase medicines table via supabase_db.
 """
-
 from typing import List, Optional
-
-import backend.supabase_db as supabase_db
+import supabase_db as db
 
 
 def _normalize(name: str) -> str:
@@ -17,7 +11,7 @@ def _normalize(name: str) -> str:
 
 def get_info(name: str) -> dict:
     """Return the medicine record (dict) or {} if unknown."""
-    med = supabase_db.get_medicine(name)
+    med = db.get_medicine(name)
     return med or {}
 
 
@@ -26,7 +20,7 @@ def check(medicine: str,
           other_medicines: Optional[List[str]] = None) -> dict:
     """Combine age limits + interactions + warnings for one medicine."""
     other_medicines = other_medicines or []
-    info = supabase_db.get_medicine(medicine)
+    info = db.get_medicine(medicine)
     recognized = info is not None
     info = info or {}
 
