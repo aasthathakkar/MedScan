@@ -1,0 +1,136 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg);
+  padding: var(--space-lg);
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 40px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+/* Logo */
+.logo { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+.logoChip {
+  width: 48px; height: 48px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #7C5CFC, #FF8A5C);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 16px rgba(124,92,252,0.32);
+  flex-shrink: 0;
+}
+.logoTitle { font-family: var(--font-display); font-weight: 700; font-size: 22px; color: var(--color-text); }
+.logoSub { font-size: 12px; color: var(--color-text-muted); font-weight: 600; }
+
+/* Headings */
+.heading { font-family: var(--font-display); font-weight: 700; font-size: 24px; color: var(--color-text); margin-top: 4px; }
+.sub { font-size: 14px; color: var(--color-text-secondary); margin-top: -8px; }
+
+/* Google button */
+.googleBtn {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  width: 100%;
+  padding: 13px 20px;
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-display); font-weight: 700; font-size: 15px;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+}
+.googleBtn:hover:not(:disabled) {
+  background: #f8f8f8;
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+.googleBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Divider */
+.divider {
+  display: flex; align-items: center; gap: 12px;
+  color: var(--color-text-muted); font-size: 13px;
+}
+.divider::before, .divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--color-border);
+}
+
+/* Form */
+.form { display: flex; flex-direction: column; gap: 14px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.label { font-family: var(--font-display); font-weight: 700; font-size: 13.5px; color: var(--color-text); }
+.input {
+  width: 100%; padding: 12px 15px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body); font-size: 15px; color: var(--color-text);
+  background: var(--color-surface);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  outline: none;
+}
+.input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(124,92,252,0.12);
+}
+
+/* Feedback */
+.error {
+  background: var(--color-danger-bg);
+  color: #c23354;
+  border: 1px solid #f7c0cc;
+  border-radius: var(--radius-md);
+  padding: 11px 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.success {
+  background: var(--color-success-bg);
+  color: #159c63;
+  border: 1px solid #a8e8cc;
+  border-radius: var(--radius-md);
+  padding: 11px 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+/* Submit */
+.submitBtn {
+  width: 100%; padding: 14px;
+  background: var(--color-primary);
+  color: #fff;
+  border: none; border-radius: var(--radius-md);
+  font-family: var(--font-display); font-weight: 700; font-size: 16px;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(124,92,252,0.28);
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+.submitBtn:hover:not(:disabled) { background: var(--color-primary-hover); transform: translateY(-1px); }
+.submitBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Toggle */
+.toggle { text-align: center; font-size: 13.5px; color: var(--color-text-secondary); }
+.toggleBtn {
+  background: none; border: none; cursor: pointer;
+  color: var(--color-primary); font-weight: 700; font-size: 13.5px;
+  font-family: var(--font-body);
+  text-decoration: underline;
+}
+
+/* Disclaimer */
+.disclaimer {
+  text-align: center; font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
