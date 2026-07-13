@@ -1,21 +1,28 @@
 """
-supabase layer instead of sqlite for login 
+Supabase data layer — replaces db.py entirely.
 
-uses the SERVICE ROLE KEY (never exposed to frontend) so backend can seed medicines bypassing RLS
-All history rights include userid so each user ever only reads/writes their own rows"""
+Uses the SERVICE ROLE key (never exposed to frontend) so backend can
+seed medicines bypassing RLS. All history writes include user_id so
+each user only ever reads/writes their own rows.
+"""
 
-import os 
+import os
 from typing import Any, Dict, List, Optional
+
 from supabase import create_client, Client
 from dotenv import load_dotenv
 from seed_data import MEDICINES
 
 load_dotenv()
+
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_SERVICE_KEY = os.environ["SUPABASE_SERVICE_KEY"]
 
+
 def _client() -> Client:
     return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+
 # ---------------------------------------------------------------------------
 # Setup / seeding
 # ---------------------------------------------------------------------------
@@ -103,6 +110,7 @@ def log_scan(user_id: str, medicine_name: Optional[str],
         "expiry": expiry,
         "expiry_status": expiry_status,
     }).execute()
+
 
 def get_history(user_id: str, limit: int = 20) -> Dict[str, Any]:
     sb = _client()
