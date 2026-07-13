@@ -121,5 +121,3 @@ def get_history(user_id: str, limit: int = 20) -> Dict[str, Any]:
         .execute().data or []
 
     return {"symptom_checks": symptoms, "scans": scans}
-PYEOF
-echo /"supabase_db.py written"
