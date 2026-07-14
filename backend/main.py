@@ -23,7 +23,7 @@ Run:
 import os
 import tempfile
 from typing import List, Optional
-from pathlib import Path
+
 from fastapi import FastAPI, UploadFile, File, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -32,6 +32,7 @@ from dotenv import load_dotenv
 
 import supabase_db as db
 import safety
+import ingredient_data
 from symptom_model import SymptomMatcher
 
 load_dotenv()
@@ -180,9 +181,28 @@ async def scan(file: UploadFile = File(...),
     finally:
         os.unlink(tmp_path)
 
-    info = safety.get_info(result.get("medicine_name") or "")
-    result["treats"] = info.get("treats", [])
-    result["warnings"] = info.get("warnings", [])
+    # Enrich with medicine info — try KB first, then ingredient lookup
+    match_method = result.get("match_method", "none")
+    matched_ingredient = result.get("matched_ingredient")
+
+    if match_method == "ingredient" and matched_ingredient:
+        # Ingredient match — pull info straight from ingredient_data
+        import ingredient_data
+        ing_info = ingredient_data.INGREDIENTS.get(matched_ingredient, {})
+        result["treats"]      = ing_info.get("treats", [])
+        result["side_effects"] = ing_info.get("side_effects", [])
+        result["warnings"]    = ing_info.get("warnings", [])
+        result["min_age"]     = ing_info.get("min_age")
+        result["interactions"] = ing_info.get("interactions", [])
+    else:
+        # KB match or fallback — use safety/supabase lookup as before
+        info = safety.get_info(result.get("medicine_name") or "")
+        result["treats"]      = info.get("treats", [])
+        result["side_effects"] = info.get("side_effects", [])
+        result["warnings"]    = info.get("warnings", [])
+        result["min_age"]     = info.get("min_age")
+        result["interactions"] = info.get("interactions", [])
+
     result["disclaimer"] = DISCLAIMER
 
     db.log_scan(user_id, result.get("medicine_name"),

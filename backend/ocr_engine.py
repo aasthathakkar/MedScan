@@ -3,12 +3,18 @@ OCR for medicine strips/boxes using EasyOCR.
 
 Pipeline:
   image -> EasyOCR text blocks
-        -> medicine name  (prefer a known drug name, else the tallest text)
-        -> expiry date    (regex: MM/YYYY, MM-YY, MON YYYY, ISO, with EXP prefix)
-        -> expiry status  (expired / expiring_soon / valid) vs today
+        -> medicine name   (priority order below)
+        -> expiry date     (regex across all formats)
+        -> expiry status   (expired / expiring_soon / valid) vs IST today
 
-EasyOCR downloads its model files on first run, so the first /scan call
-will be slow. After that it is cached.
+Medicine name resolution priority:
+  1. A line in the OCR text that matches the medicines knowledge base (brand lookup)
+  2. Active ingredient match via ingredient_data.lookup_by_ingredient()
+     — catches any brand not in the KB as long as its ingredient is listed
+  3. Tallest text block as a last-resort fallback (raw OCR, unverified)
+
+The match_method field in the result tells the frontend which path fired,
+so it can show "Matched by ingredient: paracetamol" vs "Matched by name".
 """
 
 import re
@@ -16,12 +22,12 @@ import calendar
 from datetime import date, datetime, timedelta, timezone
 
 import safety
+import ingredient_data
 
 _reader = None
 
 
 def _get_reader():
-    """Lazy-load the EasyOCR reader (heavy import + model download)."""
     global _reader
     if _reader is None:
         import easyocr
@@ -29,24 +35,25 @@ def _get_reader():
     return _reader
 
 
-# month name/abbr -> number, e.g. {"jan": 1, "january": 1, ...}
 _MONTHS = {m.lower(): i for i, m in enumerate(calendar.month_abbr) if m}
 _MONTHS.update({m.lower(): i for i, m in enumerate(calendar.month_name) if m})
 
 _EXP_PATTERNS = [
-    # EXP / Use before / Best before prefix, then MM/YY(YY)
     r'(?:exp(?:iry)?|use before|best before|bb)[^0-9a-z]{0,6}([0-1]?\d)\s*[/\-.]\s*(\d{2,4})',
-    r'\b([0-1]?\d)\s*[/\-.]\s*(\d{4})\b',   # MM/YYYY
-    r'\b([0-1]?\d)\s*[/\-.]\s*(\d{2})\b',   # MM/YY
-    r'\b(\d{4})\s*[/\-.]\s*([0-1]?\d)\b',   # YYYY-MM (ISO-ish)
+    r'\b([0-1]?\d)\s*[/\-.]\s*(\d{4})\b',
+    r'\b([0-1]?\d)\s*[/\-.]\s*(\d{2})\b',
+    r'\b(\d{4})\s*[/\-.]\s*([0-1]?\d)\b',
 ]
+
+_IST = timezone(timedelta(hours=5, minutes=30))
+
+
+def _today():
+    return datetime.now(_IST).date()
 
 
 def _parse_expiry(text):
-    """Return (month, year) or None."""
     t = text.lower()
-
-    # Month-name format: "jun 2025", "jun/25", "exp jun 2026"
     name_re = r'\b(' + '|'.join(re.escape(k) for k in _MONTHS) + r')\s*[/\-. ]\s*(\d{2,4})\b'
     m = re.search(name_re, t)
     if m:
@@ -54,12 +61,11 @@ def _parse_expiry(text):
         year = int(m.group(2))
         year = 2000 + year if year < 100 else year
         return month, year
-
     for pat in _EXP_PATTERNS:
         m = re.search(pat, t)
         if m:
             a, b = int(m.group(1)), int(m.group(2))
-            if a > 12:           # first group is the year (ISO form)
+            if a > 12:
                 year, month = a, b
             else:
                 month, year = a, b
@@ -68,15 +74,6 @@ def _parse_expiry(text):
             if 1 <= month <= 12:
                 return month, year
     return None
-
-
-# This app targets users in India, so pin "today" to IST. Otherwise a server
-# running in UTC could flag an end-of-month medicine a day early or late.
-_IST = timezone(timedelta(hours=5, minutes=30))
-
-
-def _today():
-    return datetime.now(_IST).date()
 
 
 def _expiry_status(month, year):
@@ -95,7 +92,7 @@ def _expiry_status(month, year):
 def scan_image(path):
     """Run OCR on an image file and return a structured result dict."""
     reader = _get_reader()
-    results = reader.readtext(path)  # [(bbox, text, confidence), ...]
+    results = reader.readtext(path)
 
     lines = []
     tallest = {"text": None, "height": 0}
@@ -112,15 +109,38 @@ def scan_image(path):
 
     full_text = "\n".join(lines)
 
-    # Prefer a recognised medicine name; fall back to the tallest text block.
+    # ------------------------------------------------------------------
+    # Medicine name resolution — three-pass priority system
+    # ------------------------------------------------------------------
     medicine_name = None
+    matched_ingredient = None
+    match_method = "none"
+
+    # Pass 1 — direct knowledge-base match (brand or generic in KB)
     for line in lines:
         if safety.get_info(line):
             medicine_name = line.strip()
+            match_method = "knowledge_base"
             break
+
+    # Pass 2 — ingredient lookup (catches unknown brands)
+    if not medicine_name:
+        ing_name, ing_info = ingredient_data.lookup_by_ingredient(full_text)
+        if ing_name:
+            matched_ingredient = ing_name
+            # Use the ingredient name as the display name since the brand
+            # isn't in our KB — better than showing a random OCR line
+            medicine_name = ing_name.title()
+            match_method = "ingredient"
+
+    # Pass 3 — tallest text block (raw fallback, unverified)
     if not medicine_name:
         medicine_name = tallest["text"]
+        match_method = "ocr_fallback"
 
+    # ------------------------------------------------------------------
+    # Expiry parsing
+    # ------------------------------------------------------------------
     parsed = _parse_expiry(full_text)
     if parsed:
         month, year = parsed
@@ -132,6 +152,8 @@ def scan_image(path):
     return {
         "raw_text": full_text,
         "medicine_name": medicine_name,
+        "matched_ingredient": matched_ingredient,
+        "match_method": match_method,
         "expiry": expiry_str,
         "expiry_iso": iso,
         "expiry_status": status,
