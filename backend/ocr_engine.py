@@ -71,6 +71,11 @@ def _parse_expiry(text):
                 month, year = a, b
             if year < 100:
                 year += 2000
+            # Sanity check: reject years outside a plausible medicine range.
+            # OCR commonly misreads digits (2022 → 7022). Anything outside
+            # 2015–2040 is almost certainly a misread, so treat as unknown.
+            if not (2015 <= year <= 2040):
+                continue
             if 1 <= month <= 12:
                 return month, year
     return None
@@ -117,9 +122,11 @@ def scan_image(path):
     match_method = "none"
 
     # Pass 1 — direct knowledge-base match (brand or generic in KB)
+    # Require at least 3 alpha characters to avoid single-letter OCR noise
     for line in lines:
-        if safety.get_info(line):
-            medicine_name = line.strip()
+        clean = line.strip()
+        if len(re.sub(r'[^A-Za-z]', '', clean)) >= 3 and safety.get_info(clean):
+            medicine_name = clean
             match_method = "knowledge_base"
             break
 
