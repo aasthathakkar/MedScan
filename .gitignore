@@ -21,4 +21,4 @@ build/
 # OS / editor
 .DS_Store
 
-# NOTE: model.pkl + tfidf.pkl are intentionally committed so deploy needs no retrain
+# NOTE: model.pkl + tfidf.pkl are intentionally committed so deploy needs no retrain*.db
