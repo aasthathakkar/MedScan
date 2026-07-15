@@ -1,101 +1,154 @@
 # MedScan
 
-A full-stack medicine advisor that helps you understand a medicine you already have at home: what it treats, whether it's expired, and whether it's safe given your age or what else you're taking. Requires a free account — your search and scan history is private to you.
+A full-stack medicine advisor that helps you understand a medicine you already have at home — what it treats, whether it's expired, and whether it's safe given your age or other medicines you're taking. Requires a free account; your history is private to you.
 
-> ⚠️ **Educational prototype, not medical advice.** This tool does not diagnose conditions or prescribe medication. Always consult a qualified doctor or pharmacist before taking any medicine.
+> ⚠️ **Educational prototype, not medical advice.** Always consult a qualified doctor or pharmacist before taking any medicine.
 
 ---
 
-## Why this exists
+## The problem it solves
 
-In India especially, people often have medicines at home without knowing what they're for, whether they're still good, or whether they're safe to combine with something else. People turn to general-purpose chatbots for this, awkwardly. MedScan is purpose-built for it: describe symptoms and get medicines commonly used for them, scan a strip to read its expiry date, or check one medicine against your age and other medications — all from a small, curated knowledge base rather than open-ended chat.
+In India, people often self-medicate with medicines they have at home — without knowing whether it's expired, whether it interacts with something else they're taking, or whether it's even the right medicine for their symptoms. People use ChatGPT for this, awkwardly. MedScan is purpose-built for it.
 
-## What it does
+## Features
 
-**1. Symptom Checker** — describe symptoms in plain text; a TF-IDF + Logistic Regression model returns the top 3 closest-matching medicines from the knowledge base, each with a confidence score, what it treats, side effects, and warnings.
+**Symptom Checker** — describe symptoms in plain text; a TF-IDF + Logistic Regression model trained on 177k+ real drug reviews returns the top 3 most likely medicines with confidence scores, what each treats, side effects, and warnings.
 
-**2. Scan Medicine** — upload a photo of a medicine strip or box; EasyOCR reads the text, a regex parser extracts the expiry date in whatever format it's printed (`MM/YYYY`, `MM-YY`, `EXP JUN 2026`, etc.), and the app reports whether it's valid, expiring soon, or expired.
+**Scan Medicine** — upload a photo of a medicine strip or box; EasyOCR reads the text, a 3-pass ingredient lookup resolves unknown brands to their active ingredient (Calpol → Paracetamol, Azithral → Azithromycin, 70+ brands supported), and a regex expiry parser with year sanity-checking rejects OCR misreads like "7022".
 
-**3. Safety Checker** — enter a medicine name plus your age and any other medicines you're taking; rule-based checks flag age restrictions (e.g. aspirin isn't recommended under 16, due to Reye's syndrome risk) and known interactions between medicines.
+**Safety Checker** — enter a medicine name, your age, and other medicines you're taking; rule-based checks flag age restrictions (aspirin under 16 → Reye's syndrome risk) and known drug interactions.
 
-**4. Medicine Encyclopedia** — browse or search the full knowledge base directly: what each medicine treats, side effects, warnings, brand names, and interactions.
+**Medicine Encyclopedia** — browse or search the knowledge base: what each medicine treats, side effects, warnings, brand names, and interactions.
 
-**5. History** — a private log of your past symptom checks and scans. Requires login — each user only ever sees their own rows, enforced at the database level via Row Level Security.
+**Private History** — every symptom check and scan is logged privately per user, enforced at the database level via Postgres Row Level Security — not just backend filtering.
 
-## How it's built
+## Tech stack
 
-**Backend** — FastAPI (Python), Supabase (Postgres), scikit-learn, EasyOCR
-**Frontend** — React (Vite), plain CSS modules, Supabase JS client
+| Layer | Technology |
+|---|---|
+| Backend | FastAPI (Python) |
+| ML model | scikit-learn — TF-IDF + Logistic Regression |
+| OCR | EasyOCR + custom 3-pass name resolver + regex expiry parser |
+| Database | Supabase (Postgres + Row Level Security) |
+| Auth | Supabase Auth (email/password + Google OAuth) |
+| Frontend | React + Vite, plain CSS modules |
+| Deployment | Netlify (frontend) + Railway (backend) |
 
-### Authentication
+## ML model
 
-Auth is handled entirely by Supabase — email/password and Google OAuth are both supported. The frontend uses the Supabase JS client with the `anon` public key. The backend uses the `service_role` key (never exposed to the frontend) to seed data and verify JWTs on protected routes.
+The symptom matcher uses a hybrid training strategy:
 
-Protected routes (`/symptoms`, `/scan`, `/history`) require a valid Bearer token in the `Authorization` header. The frontend attaches it automatically via `getAccessToken()` before every request. `/check` and `/medicines` are intentionally public — they're purely informational lookups that don't touch personal data.
+- **External data:** WebMD drug review dataset (~362k reviews, 200+ drugs) for breadth
+- **OTC oversampling:** common Indian OTC medicines (Paracetamol, Cetirizine, Omeprazole, etc.) are oversampled 8× to correct for the US prescription bias in the WebMD data — so "headache fever" returns Paracetamol, not Naproxen
+- **Architecture:** `TfidfVectorizer` (unigrams + bigrams, 50k features) → `LogisticRegression (C=5.0)`
+- **Evaluation on held-out 20% test split:**
+  - Top-1 accuracy: ~30%
+  - **Top-3 accuracy: ~61%** ← the relevant metric (UI shows 3 results)
+  - Macro F1: ~0.20
 
-### Privacy model
+Smoke test results after training:
+```
+'headache fever body ache'   → Paracetamol 99.7%
+'allergy and sneezing'       → Cetirizine 92.3%
+'acidity and heartburn'      → Omeprazole 87.6%
+'type 2 diabetes'            → Metformin 72.3%
+'loose motion diarrhea'      → Loperamide 98.1%
+```
 
-History privacy is enforced at the database level via Postgres Row Level Security (RLS), not just in the backend code. Every row in `symptom_history` and `scan_history` has a `user_id` column that references `auth.users`. RLS policies ensure a user can only `SELECT`, `INSERT`, or `DELETE` rows where `auth.uid() = user_id` — so even a direct API call with the anon key can't read another user's history. The backend's own filter-by-user_id is a second layer, not the only layer.
+The ingredient-based lookup is a separate system from the classifier — it reads active ingredients off a scanned strip and resolves 25 common OTC ingredients and 70+ brand names without needing the ML model.
 
-### The ML model
+## Privacy model
 
-The symptom matcher is a `TfidfVectorizer` (unigrams + bigrams) feeding a `LogisticRegression` classifier, trained on symptom/condition → medicine pairs. It's a closed-set classifier: it can only ever return one of the medicines it was trained on, never an unrecognized one. Two data sources are supported:
-
-- A small **built-in seed set** (~20 medicines, hand-written) so the app runs immediately with zero setup.
-- The full **[UCI ML Drug Review Dataset](https://archive.ics.uci.edu/dataset/461/drug+review+dataset+drugs+com)** (Drugs.com, ~215k reviews), if `drugsComTrain_raw.csv` is placed in `backend/` before training.
-
-`evaluate_model.py` does an honest 80/20 train/test split and reports top-1 accuracy, top-3 accuracy, and macro-F1.
-
-### The data layer
-
-Supabase (Postgres). Three tables:
-
-| Table | Scope | Purpose |
-|---|---|---|
-| `medicines` | Shared | Curated knowledge base — 19 common OTC medicines with brand names, treats, side effects, warnings, min age, interactions |
-| `symptom_history` | Per-user (RLS) | Every symptom search, private to the user who ran it |
-| `scan_history` | Per-user (RLS) | Every strip scan, private to the user who ran it |
-
-### OCR pipeline
-
-EasyOCR reads all text blocks off the uploaded image. The medicine name is taken as either a recognized entry from the knowledge base if one appears in the text, or the tallest text block as a fallback. The expiry date is extracted via regex patterns covering numeric and month-name formats. Expiry status is computed against IST.
+History is private per user via Postgres Row Level Security (RLS). Every row in `symptom_history` and `scan_history` has a `user_id` referencing `auth.users`. RLS policies enforce `auth.uid() = user_id` at the database level — so even a direct API call with the public anon key cannot read another user's rows.
 
 ## Project structure
 
 ```
 MedScan/
 ├── backend/
-│   ├── main.py              # FastAPI app and routes (auth-aware)
-│   ├── supabase_db.py       # Supabase data layer (replaces SQLite db.py)
-│   ├── db.py                # Legacy SQLite layer (kept for reference, unused)
+│   ├── main.py              # FastAPI routes (auth-aware)
+│   ├── supabase_db.py       # Supabase data layer
 │   ├── seed_data.py         # Medicine knowledge base (source of truth)
-│   ├── safety.py            # Age limit + interaction logic
-│   ├── symptom_model.py     # Loads model.pkl/tfidf.pkl, runs predictions
-│   ├── ocr_engine.py        # EasyOCR + expiry parsing
-│   ├── train_model.py       # Trains and saves the symptom matcher
-│   ├── evaluate_model.py    # Held-out accuracy / F1 evaluation
-│   ├── model.pkl, tfidf.pkl # Trained model artifacts (committed)
+│   ├── ingredient_data.py   # 25 ingredients + 70+ brand name lookup
+│   ├── safety.py            # Age limits + interaction rule checks
+│   ├── ocr_engine.py        # EasyOCR + 3-pass name resolution + expiry parsing
+│   ├── symptom_model.py     # Loads and runs the trained classifier
+│   ├── train_model.py       # Hybrid training script (WebMD + OTC oversampling)
+│   ├── evaluate_model.py    # Held-out accuracy evaluation
+│   ├── model.pkl            # Trained classifier (committed — no retrain on deploy)
+│   ├── tfidf.pkl            # Fitted vectorizer
+│   ├── nixpacks.toml        # Pins Python 3.12 for Railway (torch compatibility)
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/
-│   │   ├── lib/supabase.js   # Supabase client + auth helpers
-│   │   ├── pages/            # Auth, AuthCallback, Home, Symptoms, Scan,
-│   │   │                     # Check, Medicines, History
-│   │   ├── components/       # Nav (with user/sign-out), shared UI
-│   │   ├── api/client.js     # API calls + auth token attachment
-│   │   └── api/mock.js       # Mock data for local dev without backend
+│   │   ├── lib/supabase.js  # Supabase client + auth helpers
+│   │   ├── pages/           # Auth, AuthCallback, Home, Symptoms, Scan, Check, Medicines, History
+│   │   ├── components/      # Nav (with user + sign out), UI components
+│   │   └── api/client.js    # API calls + Bearer token attachment
+│   ├── netlify.toml         # Build config + SPA redirect rule
+│   ├── vercel.json          # Fallback SPA routing config
 │   └── package.json
+├── railway.json             # Railway deployment config
 └── README.md
 ```
 
-## Running it locally
+## Running locally
+
+### Prerequisites
+- Python 3.12
+- Node 18+
+- A [Supabase](https://supabase.com) project (free tier works)
 
 ### Supabase setup (one-time)
 
-1. Create a project at [supabase.com](https://supabase.com)
-2. Run the schema in **SQL Editor → New query** (see `schema.sql` or the schema block in the setup guide)
-3. Enable **Authentication → Providers → Google** if you want Google sign-in
+1. Create a project at supabase.com
+2. Run this schema in **SQL Editor → New query**:
+
+```sql
+create table if not exists medicines (
+    id            bigint generated always as identity primary key,
+    name          text unique not null,
+    aka           jsonb not null default '[]',
+    treats        jsonb not null default '[]',
+    side_effects  jsonb not null default '[]',
+    warnings      jsonb not null default '[]',
+    min_age       integer,
+    interactions  jsonb not null default '[]'
+);
+create table if not exists symptom_history (
+    id            bigint generated always as identity primary key,
+    user_id       uuid not null references auth.users(id) on delete cascade,
+    query         text not null,
+    top_medicine  text,
+    results       jsonb not null default '[]',
+    created_at    timestamptz not null default now()
+);
+create table if not exists scan_history (
+    id             bigint generated always as identity primary key,
+    user_id        uuid not null references auth.users(id) on delete cascade,
+    medicine_name  text,
+    expiry         text,
+    expiry_status  text,
+    created_at     timestamptz not null default now()
+);
+create index if not exists idx_symptom_history_user on symptom_history(user_id, created_at desc);
+create index if not exists idx_scan_history_user    on scan_history(user_id, created_at desc);
+alter table medicines       enable row level security;
+alter table symptom_history enable row level security;
+alter table scan_history    enable row level security;
+create policy "medicines are publicly readable" on medicines for select using (true);
+create policy "users can view own symptom history" on symptom_history for select using (auth.uid() = user_id);
+create policy "users can insert own symptom history" on symptom_history for insert with check (auth.uid() = user_id);
+create policy "users can delete own symptom history" on symptom_history for delete using (auth.uid() = user_id);
+create policy "users can view own scan history" on scan_history for select using (auth.uid() = user_id);
+create policy "users can insert own scan history" on scan_history for insert with check (auth.uid() = user_id);
+create policy "users can delete own scan history" on scan_history for delete using (auth.uid() = user_id);
+```
+
+3. Enable **Authentication → Providers → Google** for Google sign-in
 4. Set **Authentication → URL Configuration → Site URL** to `http://localhost:5173`
+5. Add `http://localhost:5173/auth/callback` to redirect URLs
+6. Turn off **Authentication → Configuration → Email → Enable email confirmations** for easier local testing
 
 ### Backend
 
@@ -103,13 +156,13 @@ MedScan/
 cd backend
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-python train_model.py   # creates model.pkl + tfidf.pkl
+python train_model.py        # seed data only; add webmd.csv for full model
 ```
 
 Create `backend/.env`:
 ```
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_KEY=your_service_role_key   # Settings → API → service_role
+SUPABASE_SERVICE_KEY=your_service_role_key
 ```
 
 ```bash
@@ -119,41 +172,74 @@ uvicorn main:app --reload --port 8000
 ### Frontend
 
 ```bash
-cd frontend
-npm install
+cd frontend && npm install
 ```
 
 Create `frontend/.env`:
 ```
 VITE_API_URL=http://localhost:8000
 VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your_anon_public_key   # Settings → API → anon public
+VITE_SUPABASE_ANON_KEY=your_anon_public_key
 ```
 
 ```bash
 npm run dev
 ```
 
+## Deploying
+
+### Backend → Railway
+
+1. Go to [railway.app](https://railway.app) → New Project → Deploy from GitHub repo → select `MedScan`
+2. Set **Root Directory** to `backend`
+3. Railway reads `nixpacks.toml` automatically — no other build config needed
+4. Add environment variables:
+   - `SUPABASE_URL` = your Supabase project URL
+   - `SUPABASE_SERVICE_KEY` = your service role key (Settings → API)
+   - `CORS_ORIGINS` = your Netlify URL (add after step below)
+5. Deploy and copy the Railway URL (e.g. `https://medscan-backend.up.railway.app`)
+
+### Frontend → Netlify
+
+1. Go to [netlify.com](https://netlify.com) → Add new site → Import from Git → select `MedScan`
+2. Netlify reads `netlify.toml` automatically — build settings are pre-configured
+3. Add environment variables:
+   - `VITE_API_URL` = your Railway URL from above
+   - `VITE_SUPABASE_URL` = your Supabase project URL
+   - `VITE_SUPABASE_ANON_KEY` = your anon public key (Settings → API)
+4. Deploy and copy your Netlify URL (e.g. `https://medscan.netlify.app`)
+
+### After both are live
+
+In Railway → Variables → update `CORS_ORIGINS` to your Netlify URL.
+
+In Supabase → Authentication → URL Configuration:
+- Site URL: your Netlify URL
+- Redirect URLs: add `https://your-netlify-url.netlify.app/auth/callback`
+
+In Google Cloud Console → APIs & Services → Credentials → your OAuth client:
+- Add your Netlify URL to authorized origins
+- Add `https://your-netlify-url.netlify.app/auth/callback` to authorized redirect URIs — wait, this actually goes through Supabase, so the redirect URI stays `https://qvtkcxcuafhwvdaaqrzw.supabase.co/auth/v1/callback` (already set)
+
 ## API reference
 
 | Method | Endpoint | Auth required | Description |
 |---|---|---|---|
-| GET | `/` | No | Health check |
+| GET | `/` | No | Health check — model status, medicine count |
 | POST | `/symptoms` | Yes | `{"text": "..."}` → top-3 medicine matches |
-| POST | `/scan` | Yes | Multipart image → name, expiry, status |
-| POST | `/check` | No | `{"medicine", "age", "other_medicines"}` → warnings |
+| POST | `/scan` | Yes | Image upload → name, ingredient match, expiry |
+| POST | `/check` | No | `{"medicine", "age", "other_medicines"}` → safety |
 | GET | `/medicines` | No | Full knowledge base |
-| GET | `/medicines/{name}` | No | One medicine's full details |
-| GET | `/history` | Yes | Caller's private symptom checks and scans |
+| GET | `/medicines/{name}` | No | One medicine's details |
+| GET | `/history` | Yes | Caller's private history |
 
-## Limitations, honestly
+## Limitations
 
-- **Not medical advice.** Decision-support over a small curated dataset, not a diagnostic tool.
-- **Closed-set classifier.** The symptom matcher can only return medicines it was trained on.
-- **Small knowledge base.** 19 medicines, hand-curated. Covers common OTC cases only.
-- **OCR depends on image quality.** Blurry or glare-heavy strips may not parse correctly.
-- **Email confirmation required by default.** New signups need to confirm their email before signing in (configurable in Supabase Authentication settings).
+- Not medical advice — decision support only, not diagnosis
+- OCR quality depends on image clarity; blurry or glare-heavy strips may not parse correctly
+- Symptom classifier is closed-set — can only return medicines it was trained on
+- WebMD dataset is US-focused; OTC oversampling corrects the most common cases but isn't exhaustive
 
 ## License
 
-Educational project. Not for clinical or commercial use without proper medical and regulatory review.
+Educational project. Not for clinical or commercial use.

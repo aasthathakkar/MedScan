@@ -1,14 +1,14 @@
 """
-Trains the symptom -> medicine matcher (TF-IDF + Logistic Regression)
-and saves model.pkl + tfidf.pkl.
+Trains the symptom -> medicine matcher (TF-IDF + Logistic Regression).
 
-Usage:
-    python train_model.py                 # auto: uses Kaggle CSV if found, else seed data
-    python train_model.py path/to/file.csv  # force a specific CSV
+Strategy: hybrid training
+  1. Start with the WebMD/Drugs.com dataset for breadth (many conditions)
+  2. Oversample our curated OTC medicines so they rank above obscure
+     US prescription drugs for common symptoms
+  3. Result: "fever headache" -> paracetamol/ibuprofen, not naproxen
 
-The Kaggle "UCI ML Drug Review dataset" (Drugs.com) ships as
-drugsComTrain_raw.csv (tab-separated). Put it in this backend/ folder.
-Until then, a small built-in seed dataset lets the whole app run end-to-end.
+This is honest ML engineering: the training data should match your use case.
+WebMD is US prescription-focused; we correct for that by weighting OTC meds.
 """
 
 import os
@@ -22,53 +22,117 @@ from sklearn.linear_model import LogisticRegression
 DATA_CANDIDATES = [
     "drugsComTrain_raw.csv",
     "data/drugsComTrain_raw.csv",
-    "drugsCom_raw/drugsComTrain_raw.csv",
-    "drugs.csv",
+    "webmd.csv",
+    "data/webmd.csv",
 ]
+
+EXCLUDE_CONDITIONS = {"other", "n/a", "", "none", "not applicable"}
+
+# ---------------------------------------------------------------------------
+# Curated OTC medicine data — these get oversampled in training so they
+# appear for common symptoms even if underrepresented in the external dataset.
+# This matches the app's actual use case: Indian OTC medicines for everyday use.
+# ---------------------------------------------------------------------------
+OTC_OVERSAMPLES = {
+    "Paracetamol": [
+        "fever", "headache", "body ache", "mild pain", "cold and fever",
+        "high temperature", "flu", "muscle pain", "toothache",
+        "headache and fever", "body pain", "fever and chills",
+    ],
+    "Ibuprofen": [
+        "pain", "inflammation", "fever", "back pain", "muscle pain",
+        "period pain", "joint pain", "swelling", "dental pain",
+        "pain and inflammation", "sports injury",
+    ],
+    "Aspirin": [
+        "pain", "fever", "headache", "mild pain", "blood thinning",
+        "heart attack prevention",
+    ],
+    "Cetirizine": [
+        "allergy", "runny nose", "sneezing", "itching", "hay fever",
+        "skin rash", "allergic rhinitis", "dust allergy",
+        "allergy and sneezing", "watery eyes",
+    ],
+    "Loratadine": [
+        "allergy", "hay fever", "runny nose", "sneezing",
+        "non drowsy allergy", "seasonal allergy",
+    ],
+    "Fexofenadine": [
+        "allergy", "hives", "itching", "hay fever",
+        "chronic urticaria", "seasonal allergies",
+    ],
+    "Omeprazole": [
+        "acidity", "heartburn", "acid reflux", "gerd",
+        "indigestion", "stomach acid", "burning stomach",
+        "acidity and heartburn",
+    ],
+    "Pantoprazole": [
+        "acidity", "heartburn", "acid reflux", "stomach acid",
+        "gastric pain", "burning in chest",
+    ],
+    "Loperamide": [
+        "diarrhea", "loose motion", "stomach upset",
+        "traveler diarrhea",
+    ],
+    "Domperidone": [
+        "nausea", "vomiting", "stomach upset", "bloating",
+        "nausea and vomiting",
+    ],
+    "Amoxicillin": [
+        "bacterial infection", "throat infection", "ear infection",
+        "chest infection", "sinus infection", "strep throat",
+    ],
+    "Azithromycin": [
+        "bacterial infection", "throat infection", "respiratory infection",
+        "pneumonia", "bronchitis", "skin infection",
+    ],
+    "Metformin": [
+        "diabetes", "high blood sugar", "type 2 diabetes",
+        "blood sugar control", "type 2 diabetes mellitus",
+    ],
+    "Salbutamol": [
+        "asthma", "wheezing", "breathlessness", "shortness of breath",
+        "bronchospasm", "exercise induced asthma",
+    ],
+    "Montelukast": [
+        "asthma", "allergy", "allergic rhinitis",
+        "exercise induced bronchospasm",
+    ],
+    "Dextromethorphan": [
+        "cough", "dry cough", "non productive cough",
+    ],
+    "Diclofenac": [
+        "pain", "inflammation", "joint pain", "muscle pain",
+        "arthritis", "back pain",
+    ],
+    "Amlodipine": [
+        "high blood pressure", "hypertension", "chest pain",
+        "angina", "blood pressure control",
+    ],
+    "Atorvastatin": [
+        "high cholesterol", "cholesterol", "cardiovascular risk",
+        "hyperlipidemia",
+    ],
+    "Vitamin C": [
+        "cold", "low immunity", "fatigue", "immunity boost",
+        "vitamin deficiency",
+    ],
+}
+
+# How many times to repeat each OTC sample
+OTC_WEIGHT = 8
 
 
 def build_seed():
-    """A small, hand-made dataset so the app works before the real CSV exists."""
-    seed = {
-        "Paracetamol": ["fever", "headache", "body ache", "mild pain",
-                        "cold and fever", "high temperature"],
-        "Ibuprofen": ["pain", "inflammation", "fever", "back pain",
-                      "muscle pain", "period pain"],
-        "Aspirin": ["pain", "fever", "headache", "mild pain"],
-        "Cetirizine": ["allergy", "runny nose", "sneezing", "itching",
-                       "hay fever", "skin rash"],
-        "Loratadine": ["allergy", "hay fever", "runny nose", "sneezing"],
-        "Omeprazole": ["acidity", "heartburn", "acid reflux", "gerd",
-                       "indigestion"],
-        "Pantoprazole": ["acidity", "heartburn", "acid reflux", "stomach acid"],
-        "Loperamide": ["diarrhea", "loose motion"],
-        "ORS": ["dehydration", "diarrhea", "loose motion", "weakness"],
-        "Amoxicillin": ["bacterial infection", "throat infection",
-                        "ear infection", "chest infection"],
-        "Azithromycin": ["bacterial infection", "throat infection",
-                         "respiratory infection"],
-        "Metformin": ["diabetes", "high blood sugar", "type 2 diabetes"],
-        "Salbutamol": ["asthma", "wheezing", "breathlessness",
-                       "shortness of breath"],
-        "Dextromethorphan": ["cough", "dry cough"],
-        "Domperidone": ["nausea", "vomiting", "stomach upset"],
-        "Montelukast": ["asthma", "allergy", "allergic rhinitis"],
-        "Diclofenac": ["pain", "inflammation", "joint pain", "muscle pain"],
-        "Vitamin C": ["cold", "low immunity", "fatigue"],
-        "Amlodipine": ["high blood pressure", "hypertension"],
-        "Atorvastatin": ["high cholesterol"],
-    }
     rows = []
-    for drug, conditions in seed.items():
+    for drug, conditions in OTC_OVERSAMPLES.items():
         for cond in conditions:
-            # repeat a couple of times so tokens/classes have support
-            rows.append({"drugName": drug, "condition": cond})
-            rows.append({"drugName": drug, "condition": cond})
+            for _ in range(OTC_WEIGHT):
+                rows.append({"drugName": drug, "condition": cond})
     return pd.DataFrame(rows)
 
 
 def load_dataset(path=None):
-    """Returns (dataframe, is_seed)."""
     paths = [path] if path else DATA_CANDIDATES
     for p in paths:
         if p and os.path.exists(p):
@@ -77,36 +141,47 @@ def load_dataset(path=None):
                 try:
                     df = pd.read_csv(p, sep=sep)
                     if {"drugName", "condition"}.issubset(df.columns):
-                        print(f"  parsed with sep={sep!r}, shape={df.shape}")
+                        print(f"  Detected Drugs.com format, shape={df.shape}")
                         return df, False
                 except Exception:
                     continue
-    print("No Kaggle CSV found -> using built-in seed dataset.")
-    print("  (Download drugsComTrain_raw.csv from Kaggle and rerun for the full model.)")
+            try:
+                df = pd.read_csv(p)
+                if {"Drug", "Condition"}.issubset(df.columns):
+                    print(f"  Detected WebMD format, shape={df.shape}")
+                    df = df.rename(columns={"Drug": "drugName", "Condition": "condition"})
+                    df = df[~df["condition"].str.lower().str.strip().isin(EXCLUDE_CONDITIONS)]
+                    return df, False
+            except Exception as e:
+                print(f"  Failed to parse {p}: {e}")
+    print("No dataset CSV found -> using built-in seed dataset.")
     return build_seed(), True
 
 
 def clean(df):
     df = df.dropna(subset=["drugName", "condition"]).copy()
-    # The raw Kaggle data has some HTML-junk condition values; drop them.
     df = df[~df["condition"].astype(str).str.contains("</span>", na=False)]
     df["condition"] = df["condition"].astype(str).str.strip().str.lower()
-    df["drugName"] = df["drugName"].astype(str).str.strip()
+    df["drugName"]  = df["drugName"].astype(str).str.strip()
     df = df[df["condition"].str.len() > 1]
+    df = df[df["drugName"].str.len() > 1]
     return df
 
 
 def train_and_save(path=None):
-    """Train the matcher and write model.pkl + tfidf.pkl. Returns (clf, vectorizer)."""
     df, is_seed = load_dataset(path)
     df = clean(df)
 
     if not is_seed:
-        # Keep the most-reviewed drugs so the classifier is tractable
-        # and the confidence scores stay meaningful.
         counts = df["drugName"].value_counts()
-        keep = list(counts[counts >= 25].head(150).index)
+        keep = list(counts[counts >= 20].head(200).index)
         df = df[df["drugName"].isin(keep)]
+        print(f"External dataset: {len(keep)} drugs, {len(df)} rows")
+        otc_df = clean(build_seed())
+        df = pd.concat([df, otc_df], ignore_index=True)
+        print(f"After OTC oversampling: {df['drugName'].nunique()} drugs, {len(df)} rows")
+    else:
+        df = clean(build_seed())
 
     print(f"Training on {df['drugName'].nunique()} drugs / {len(df)} rows")
 
@@ -115,12 +190,12 @@ def train_and_save(path=None):
 
     vectorizer = TfidfVectorizer(
         ngram_range=(1, 2),
-        min_df=1 if is_seed else 3,
+        min_df=2,
         stop_words="english",
+        max_features=50000,
     )
     Xv = vectorizer.fit_transform(X)
-
-    clf = LogisticRegression(max_iter=1000, C=4.0)
+    clf = LogisticRegression(max_iter=2000, C=5.0)
     clf.fit(Xv, y)
 
     with open("tfidf.pkl", "wb") as f:
@@ -128,21 +203,30 @@ def train_and_save(path=None):
     with open("model.pkl", "wb") as f:
         pickle.dump(clf, f)
     print("Saved model.pkl and tfidf.pkl")
+
+    classes = clf.classes_
+    print("\nSmoke test:")
+    for q in [
+        "headache fever body ache",
+        "allergy and sneezing",
+        "acidity and heartburn",
+        "high blood pressure",
+        "type 2 diabetes",
+        "dry cough",
+        "nausea and vomiting",
+        "loose motion diarrhea",
+    ]:
+        row = clf.predict_proba(vectorizer.transform([q]))[0]
+        idx = row.argsort()[::-1][:3]
+        top = [(classes[i], round(float(row[i]), 3)) for i in idx]
+        print(f"  {q!r:35} -> {top}")
+
     return clf, vectorizer
 
 
 def main():
     path = sys.argv[1] if len(sys.argv) > 1 else None
-    clf, vectorizer = train_and_save(path)
-
-    # Smoke test
-    classes = clf.classes_
-    for q in ["headache fever body ache", "allergy and sneezing",
-              "acidity and heartburn", "high blood pressure"]:
-        row = clf.predict_proba(vectorizer.transform([q]))[0]
-        idx = row.argsort()[::-1][:3]
-        top = [(classes[i], round(float(row[i]), 3)) for i in idx]
-        print(f"  {q!r:35} -> {top}")
+    train_and_save(path)
 
 
 if __name__ == "__main__":

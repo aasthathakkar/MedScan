@@ -1,0 +1,12 @@
+# Tells Railway/Nixpacks to use Python 3.12 specifically.
+# PyTorch (pulled in by EasyOCR) only has stable wheels for 3.12.
+# Without this, Nixpacks may pick Python 3.13+ and torch install fails.
+
+[phases.setup]
+nixPkgs = ["python312", "python312Packages.pip"]
+
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
+[start]
+cmd = "uvicorn main:app --host 0.0.0.0 --port $PORT"
