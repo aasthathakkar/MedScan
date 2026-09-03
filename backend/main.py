@@ -71,9 +71,7 @@ except FileNotFoundError as exc:
     matcher_error = str(exc)
 
 
-# ---------------------------------------------------------------------------
 # Auth helper — verifies the Supabase JWT and returns the user_id
-# ---------------------------------------------------------------------------
 
 def get_user_id(authorization: Optional[str]) -> str:
     """
@@ -95,10 +93,7 @@ def get_user_id(authorization: Optional[str]) -> str:
         raise HTTPException(status_code=401, detail="Invalid or expired token.")
 
 
-# ---------------------------------------------------------------------------
-# Schemas
-# ---------------------------------------------------------------------------
-
+#schema
 class SymptomRequest(BaseModel):
     text: str
 
@@ -109,10 +104,7 @@ class CheckRequest(BaseModel):
     other_medicines: Optional[List[str]] = []
 
 
-# ---------------------------------------------------------------------------
-# Routes
-# ---------------------------------------------------------------------------
-
+#routes 
 @app.get("/")
 def root():
     return {

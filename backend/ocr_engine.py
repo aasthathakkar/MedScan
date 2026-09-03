@@ -114,9 +114,7 @@ def scan_image(path):
 
     full_text = "\n".join(lines)
 
-    # ------------------------------------------------------------------
     # Medicine name resolution — three-pass priority system
-    # ------------------------------------------------------------------
     medicine_name = None
     matched_ingredient = None
     match_method = "none"
@@ -145,9 +143,7 @@ def scan_image(path):
         medicine_name = tallest["text"]
         match_method = "ocr_fallback"
 
-    # ------------------------------------------------------------------
     # Expiry parsing
-    # ------------------------------------------------------------------
     parsed = _parse_expiry(full_text)
     if parsed:
         month, year = parsed

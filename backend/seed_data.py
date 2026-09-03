@@ -1,7 +1,7 @@
 """
 Canonical medicine knowledge base — the single source of truth.
 
-`db.py` reads this on first run to populate the `medicines` table. To change
+`supabase_db.py` reads this on first run to populate the `medicines` table. To change
 the medicine data, edit here and either delete the .db file or call
 `db.init_db(reseed=True)`.
 

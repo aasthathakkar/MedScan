@@ -22,11 +22,7 @@ SUPABASE_SERVICE_KEY = os.environ["SUPABASE_SERVICE_KEY"]
 def _client() -> Client:
     return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
-
-# ---------------------------------------------------------------------------
-# Setup / seeding
-# ---------------------------------------------------------------------------
-
+#setup/seeding
 def init_db() -> int:
     """Seed medicines table if empty. Returns count already present."""
     sb = _client()
@@ -51,10 +47,7 @@ def init_db() -> int:
         print(f"Medicines already seeded ({count} rows).")
     return count
 
-
-# ---------------------------------------------------------------------------
 # Medicines (shared reference data — no user_id needed)
-# ---------------------------------------------------------------------------
 
 def get_medicine(name: str) -> Optional[Dict[str, Any]]:
     """Look up by generic name or brand (aka). Returns dict or None."""
@@ -85,10 +78,7 @@ def all_medicines() -> List[Dict[str, Any]]:
     res = sb.table("medicines").select("*").order("name").execute()
     return res.data or []
 
-
-# ---------------------------------------------------------------------------
 # History (user-scoped — private per user via RLS + user_id filter)
-# ---------------------------------------------------------------------------
 
 def log_symptom_check(user_id: str, query: str, results: list) -> None:
     top = results[0]["medicine"] if results else None
