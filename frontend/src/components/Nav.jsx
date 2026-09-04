@@ -56,7 +56,7 @@ export default function Nav({ session }) {
         </div>
         <div>
           <div className={s.logoTitle}>MedScan</div>
-          <div className={s.logoSub}>Medicine, made friendly</div>
+          <div className={s.logoSub}>Know what you're taking</div>
         </div>
       </div>
 

@@ -49,7 +49,7 @@ export function Btn({ children, variant = 'primary', size = 'md', className = ''
   );
 }
 
-export function Spinner({ size = 20, color = '#7C5CFC' }) {
+export function Spinner({ size = 20, color = '#116A5E' }) {
   return (
     <svg className={s.spinner} width={size} height={size} viewBox="0 0 24 24" fill="none">
       <circle

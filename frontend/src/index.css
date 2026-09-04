@@ -1,40 +1,40 @@
-@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Nunito+Sans:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap');
 
 :root {
-  /* Brand */
-  --color-primary:       #7C5CFC;
-  --color-primary-hover: #6846E6;
-  --color-primary-light: #F1ECFF;
-  --color-primary-alpha: rgba(124, 92, 252, 0.10);
+  /* Brand — deep clinical teal (trust, pharmacy heritage), not the generated-app violet */
+  --color-primary:       #116A5E;
+  --color-primary-hover: #0C544A;
+  --color-primary-light: #E3F0ED;
+  --color-primary-alpha: rgba(17, 106, 94, 0.10);
 
-  /* Coral accent (new) */
-  --color-accent:        #FF8A5C;
-  --color-accent-bg:     #FFEFE6;
+  /* Restrained secondary accent — used sparingly, pairs with teal */
+  --color-accent:        #C07A2C;
+  --color-accent-bg:     #F6ECDC;
 
-  /* Surfaces & text */
-  --color-bg:            #FBF9FF;
-  --color-surface:       #ffffff;
-  --color-text:          #2B2640;
-  --color-text-secondary:#6A6480;
-  --color-text-muted:    #A6A0B8;
-  --color-border:        #ECE7F5;
-  --color-border-light:  #F6F3FB;
+  /* Surfaces & text — cool paper + spruce ink */
+  --color-bg:            #F2F6F4;
+  --color-surface:       #FFFFFF;
+  --color-text:          #17302B;
+  --color-text-secondary:#566661;
+  --color-text-muted:    #8A9A94;
+  --color-border:        #DCE6E2;
+  --color-border-light:  #EBF1EE;
 
-  /* Status */
-  --color-success:       #1FB877;
-  --color-success-bg:    #E6F8F0;
-  --color-warning:       #F4A100;
-  --color-warning-bg:    #FFF5E0;
-  --color-danger:        #F04E6B;
-  --color-danger-bg:     #FFEAEF;
-  --color-info:          #5B8DEF;
-  --color-info-bg:       #EAF1FE;
-  --color-neutral:       #6A6480;
-  --color-neutral-bg:    #F6F3FB;
+  /* Status — meaningful for expiry & safety, muted to read clinical */
+  --color-success:       #1C9A6C;
+  --color-success-bg:    #E4F4EC;
+  --color-warning:       #B26B00;
+  --color-warning-bg:    #FBEFD8;
+  --color-danger:        #C13B2E;
+  --color-danger-bg:     #F9E7E4;
+  --color-info:          #2C6DA6;
+  --color-info-bg:       #E7EFF7;
+  --color-neutral:       #566661;
+  --color-neutral-bg:    #EEF3F1;
 
   /* Type */
-  --font-display: 'Quicksand', sans-serif;
-  --font-body:    'Nunito Sans', sans-serif;
+  --font-display: 'Hanken Grotesk', sans-serif;
+  --font-body:    'Public Sans', sans-serif;
   --text-xs:   0.75rem;
   --text-sm:   0.8125rem;
   --text-base: 0.9375rem;
@@ -45,16 +45,16 @@
   --text-3xl:  1.875rem;
   --text-4xl:  2.25rem;
 
-  /* Rounded — friendly */
-  --radius-sm:  12px;
-  --radius-md:  14px;
-  --radius-lg:  22px;
+  /* Radii — crisp, not toy-like */
+  --radius-sm:  6px;
+  --radius-md:  8px;
+  --radius-lg:  12px;
   --radius-full: 999px;
 
-  /* Soft plum-tinted shadows */
-  --shadow-sm: 0 8px 24px rgba(124, 92, 252, 0.06);
-  --shadow-md: 0 8px 24px rgba(124, 92, 252, 0.10);
-  --shadow-lg: 0 16px 34px rgba(124, 92, 252, 0.16);
+  /* Shadows — quiet & functional; structure comes from borders */
+  --shadow-sm: 0 1px 2px rgba(20, 45, 38, 0.05);
+  --shadow-md: 0 3px 10px rgba(20, 45, 38, 0.07);
+  --shadow-lg: 0 12px 30px rgba(20, 45, 38, 0.10);
 
   /* Spacing */
   --space-xs:  4px;
@@ -76,7 +76,7 @@
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 html { -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
 body { font-family: var(--font-body); font-size: var(--text-base); line-height: 1.6; color: var(--color-text); background: var(--color-bg); }
-h1,h2,h3,h4,h5,h6 { font-family: var(--font-display); font-weight: 700; line-height: 1.25; letter-spacing: -0.3px; }
+h1,h2,h3,h4,h5,h6 { font-family: var(--font-display); font-weight: 700; line-height: 1.2; letter-spacing: -0.4px; }
 a { color: var(--color-primary); text-decoration: none; }
 button { font-family: var(--font-body); cursor: pointer; border: none; background: none; }
 input, textarea, select { font-family: var(--font-body); font-size: var(--text-base); color: var(--color-text); border: 1.5px solid var(--color-border); border-radius: var(--radius-md); padding: 11px 15px; background: var(--color-surface); outline: none; transition: border-color var(--transition-fast), box-shadow var(--transition-fast); width: 100%; }
@@ -84,12 +84,15 @@ input:focus, textarea:focus { border-color: var(--color-primary); box-shadow: 0 
 input::placeholder, textarea::placeholder { color: var(--color-text-muted); }
 img { max-width: 100%; display: block; }
 ul, ol { list-style: none; }
-::selection { background: #E0D6FF; }
+::selection { background: #CDE7E1; }
 #root { display: flex; min-height: 100vh; }
 ::-webkit-scrollbar { width: 7px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #E0D6FF; border-radius: var(--radius-full); }
+::-webkit-scrollbar-thumb { background: #CDD8D3; border-radius: var(--radius-full); }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
 @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes slideDown { from { opacity: 0; max-height: 0; } to { opacity: 1; max-height: 500px; } }
