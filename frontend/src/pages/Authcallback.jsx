@@ -26,11 +26,11 @@ export default function AuthCallback() {
     <div style={{
       minHeight: '100vh', display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center', gap: 16,
-      fontFamily: 'Quicksand, sans-serif', color: '#6A6480'
+      fontFamily: 'var(--font-body)', color: 'var(--color-text-secondary)'
     }}>
       <div style={{
-        width: 48, height: 48, borderRadius: 16,
-        background: 'linear-gradient(135deg,#7C5CFC,#FF8A5C)',
+        width: 48, height: 48, borderRadius: 12,
+        background: 'var(--color-primary)',
         display: 'flex', alignItems: 'center', justifyContent: 'center'
       }}>
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none"
@@ -39,7 +39,7 @@ export default function AuthCallback() {
           <path d="M12 8v6M9 11h6"/>
         </svg>
       </div>
-      <p style={{ fontWeight: 700, fontSize: 18 }}>Signing you in…</p>
+      <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, color: 'var(--color-text)' }}>Signing you in…</p>
     </div>
   )
 }
